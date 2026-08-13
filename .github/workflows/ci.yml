@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main", "feat/working-external-consumer" ]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install HowlFrame
+        run: |
+          # The coordinator or environment provides HowlFrame, we just check it exists
+          if ! command -v howlframe &> /dev/null; then
+            echo "howlframe not found, assuming local/artifact testing"
+            exit 0
+          fi
+
+      - name: Check Backend
+        run: howlframe check backend/server.howl
+
+      - name: Check Frontend
+        run: howlframe check frontend/app.howl

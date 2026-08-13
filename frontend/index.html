@@ -11,7 +11,15 @@
         <h1>HowlBoard</h1>
         <button id="load-btn">Load Tasks</button>
         <div id="error" class="error"></div>
-        <div id="tasks"></div>
+        <pre id="tasks-display"></pre>
+        <div class="controls">
+            <input type="text" id="new-task-title" placeholder="New Task Title" />
+            <button id="add-btn">Add Task</button>
+        </div>
+        <div class="controls">
+            <input type="text" id="complete-task-id" placeholder="Task ID to Complete" />
+            <button id="complete-btn">Complete Task</button>
+        </div>
     </div>
     <script src="app.js"></script>
 </body>

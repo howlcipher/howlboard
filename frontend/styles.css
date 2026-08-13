@@ -18,3 +18,13 @@ body {
     color: red;
     margin-bottom: 10px;
 }
+
+pre {
+    background: #eee;
+    padding: 10px;
+    border-radius: 4px;
+    min-height: 50px;
+}
+.controls {
+    margin-top: 10px;
+}
