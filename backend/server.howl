@@ -1,0 +1,8 @@
+(http_server 8080
+  (route "/api/tasks" (lambda (req)
+    (res_json 200 (list
+      (dict ("id" "1") ("title" "Learn HowlFrame") ("status" "open"))
+      (dict ("id" "2") ("title" "Build HowlBoard") ("status" "open"))
+    ))
+  ))
+)

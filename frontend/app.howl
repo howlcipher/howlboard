@@ -1,0 +1,21 @@
+(web_app
+  (defun load_tasks ()
+    (let (req (dict ("method" "GET")))
+      (try_let (resp (fetch "http://localhost:8080/api/tasks" req))
+        (catch err
+          (set_text (dom_query "#error") "Failed to load tasks")
+        )
+        (try_let (json_resp (parse_json TaskList resp))
+          (catch parse_err
+            (set_text (dom_query "#error") "Invalid JSON response")
+          )
+          (let (tasks (map_get json_resp "tasks")) json_resp)
+        )
+      )
+    )
+  )
+
+  (on_event (dom_query "#load-btn") "click" (lambda (e)
+    (call load_tasks)
+  ))
+)
