@@ -1,3 +1,5 @@
 howlframe_bin
 backend/*.hfbc
 frontend/*.js
+server.hfbc
+howlframe_bin

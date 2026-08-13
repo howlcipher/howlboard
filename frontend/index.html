@@ -3,15 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HowlBoard</title>
+    <title>HowlBoard | App</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
-        <h1>HowlBoard</h1>
-        <button id="load-btn">Load Tasks</button>
+        <header>
+            <div>
+                <p class="kicker">// full-stack howlframe dogfood / deterministic task state</p>
+                <h1>HowlBoard</h1>
+            </div>
+            <div>
+                <button id="theme-toggle">Toggle Theme</button>
+            </div>
+        </header>
+
         <div id="error" class="error"></div>
-        <div id="tasks"></div>
+
+        <div class="controls">
+            <div class="controls-header">CREATE_TASK</div>
+            <div class="form-group">
+                <input type="text" id="new-task-title" placeholder="Task Title" />
+                <input type="text" id="new-task-priority" placeholder="Priority (e.g. HIGH)" />
+                <input type="text" id="new-task-tags" placeholder="Tags (comma separated)" />
+            </div>
+            <textarea id="new-task-desc" placeholder="Task Description" rows="2"></textarea>
+            <button id="add-btn">Submit Task</button>
+        </div>
+
+        <div class="board">
+            <div class="column" id="col-backlog">
+                <div class="column-header">BACKLOG</div>
+                <div id="tasks-backlog"></div>
+            </div>
+            <div class="column" id="col-ready">
+                <div class="column-header">READY</div>
+                <div id="tasks-ready"></div>
+            </div>
+            <div class="column" id="col-inprogress">
+                <div class="column-header">IN_PROGRESS</div>
+                <div id="tasks-inprogress"></div>
+            </div>
+            <div class="column" id="col-blocked">
+                <div class="column-header">BLOCKED</div>
+                <div id="tasks-blocked"></div>
+            </div>
+            <div class="column" id="col-done">
+                <div class="column-header">DONE</div>
+                <div id="tasks-done"></div>
+            </div>
+        </div>
+
+        <footer>
+            <span><span class="status-dot"></span>STATUS: ACTIVE &mdash; HOWLBOARD://APP</span>
+        </footer>
     </div>
     <script src="app.js"></script>
 </body>

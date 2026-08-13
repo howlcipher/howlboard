@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="HowlBoard - A full-stack deterministic board application to dogfood HowlFrame.">
+    <link rel="canonical" href="https://howlcipher.github.io/howlboard/">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="HowlBoard">
+    <meta property="og:title" content="HowlBoard | HowlFrame Dogfooding App">
+    <meta property="og:description" content="A full-stack deterministic board built to push the limits of HowlFrame.">
+    <meta property="og:url" content="https://howlcipher.github.io/howlboard/">
+
+    <title>HowlBoard | HowlFrame Dogfooding App</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <p class="kicker">// full-stack howlframe dogfood / deterministic task state</p>
+                <h1>HowlBoard</h1>
+            </div>
+            <div class="header-actions">
+                <a href="https://github.com/howlcipher/howlboard" target="_blank" rel="noreferrer">[ View on GitHub ]</a>
+                <a href="https://github.com/howlcipher/howlframe" target="_blank" rel="noreferrer">[ View HowlFrame ]</a>
+                <button id="theme-toggle" type="button">Switch to light theme</button>
+            </div>
+        </header>
+
+        <main id="main-content">
+            <section id="overview">
+                <h2>Overview</h2>
+                <p>HowlBoard is a full-stack task/board application used to test whether real applications can be built with <strong>HowlFrame</strong>.</p>
+                <p>It exists to turn language and runtime limitations into real application feedback. By strictly using HowlFrame for both the frontend JavaScript generation and the bytecode backend, it validates the platform's ability to handle CRUD, state mutations, deterministic transition rules, and browser interaction.</p>
+            </section>
+
+            <section id="architecture">
+                <h2>Architecture</h2>
+                <pre><code>frontend/*.howl
+      |
+      v
+HowlFrame JS backend
+      |
+      v
+browser
+
+      HTTP / JSON
+
+backend/*.howl
+      |
+      v
+HowlFrame bytecode
+      |
+      v
+HowlFrame VM
+      |
+      v
+native store (memory://howlboard)</code></pre>
+            </section>
+
+            <section id="dogfooding">
+                <h2>Dogfooding Evidence</h2>
+                <p>HowlBoard has already materially improved HowlFrame. Building this application exposed real friction points and bugs in the compiler and runtime. These were fixed directly in HowlFrame.</p>
+                <ul>
+                    <li><strong>HTML DOM Mutability:</strong> Discovered the JS backend lacked arbitrary HTML node injection and class toggling. Added <code>set_html</code> and <code>toggle_class</code> to HowlFrame's IR and JS backend.</li>
+                    <li><strong>Network & CORS:</strong> Exposed missing primitives for reading request methods and setting response headers. Added <code>req_method</code> and <code>res_header</code> to the HTTP server capabilities.</li>
+                    <li><strong>Type Checker Bugs:</strong> Encountered a compiler panic because <code>try_let</code> and <code>parse_json</code> were not registered in the JS backend checker. Fixed the AST walker.</li>
+                    <li><strong>Web Input:</strong> Discovered the inability to read DOM input text. Added the <code>dom_value</code> primitive to the JS backend.</li>
+                </ul>
+                <p>The feedback loop is exactly: <em>Application requirement → HowlFrame implementation → Compiler/runtime friction → Language/runtime improvement → Application continues</em>.</p>
+            </section>
+
+            <section id="capability">
+                <h2>Capability & Authority Model</h2>
+                <p>HowlBoard implements strict, deterministic state transitions. A task in <code>BACKLOG</code> cannot jump directly to <code>BLOCKED</code> or <code>DONE</code> without going through <code>READY</code> and <code>IN_PROGRESS</code>.</p>
+                <p>For future AI involvement, the application acts as the enforcement boundary:</p>
+                <pre><code>AI proposal
+   ↓
+HowlBoard deterministic policy (can_transition)
+   ↓
+ALLOW / DENY / REQUIRE_APPROVAL
+   ↓
+bounded state mutation</code></pre>
+            </section>
+
+            <section id="demo">
+                <h2>Static Demo Board</h2>
+                <p>GitHub Pages operates on static hosting. The following is a visually representative read-only demonstration of the board interface without the live HowlFrame VM backend.</p>
+                <div class="board">
+                    <div class="column" id="col-backlog">
+                        <div class="column-header">BACKLOG</div>
+                        <div id="demo-backlog"></div>
+                    </div>
+                    <div class="column" id="col-ready">
+                        <div class="column-header">READY</div>
+                        <div id="demo-ready"></div>
+                    </div>
+                    <div class="column" id="col-inprogress">
+                        <div class="column-header">IN_PROGRESS</div>
+                        <div id="demo-inprogress"></div>
+                    </div>
+                    <div class="column" id="col-blocked">
+                        <div class="column-header">BLOCKED</div>
+                        <div id="demo-blocked"></div>
+                    </div>
+                    <div class="column" id="col-done">
+                        <div class="column-header">DONE</div>
+                        <div id="demo-done"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="build">
+                <h2>Build It</h2>
+                <p>To run the live full-stack application on your own machine:</p>
+                <pre><code># 1. Clone repositories side-by-side
+git clone https://github.com/howlcipher/howlframe.git
+git clone https://github.com/howlcipher/howlboard.git
+
+# 2. Build HowlFrame compiler
+cd howlframe
+go build -o ../howlboard/howlframe_bin howlframe.go
+
+# 3. Build HowlBoard (compiles frontend and backend)
+cd ../howlboard
+make build
+
+# 4. Run the backend
+make run
+
+# 5. In a separate terminal, serve the frontend
+make run-frontend</code></pre>
+            </section>
+
+            <section id="status">
+                <h2>Current Status</h2>
+                <ul>
+                    <li><strong>Working:</strong> Full frontend/backend compilation via HowlFrame, basic CRUD, explicit deterministic state transitions, native memory store.</li>
+                    <li><strong>Limitations:</strong> Deeply nested string concatenation in HowlFrame Lisp syntax is highly unergonomic and error-prone. Arrays/Lists are not easily handled in the REST payload without more complex AST loops.</li>
+                    <li><strong>Planned:</strong> Integration with LLM proposal systems, where the agent suggests updates that are bounded by the deterministic <code>can_transition</code> policy.</li>
+                </ul>
+            </section>
+        </main>
+
+        <footer>
+            <span><span class="status-dot"></span>STATUS: ACTIVE &mdash; HOWLBOARD://PAGES_SITE</span>
+            <a href="https://github.com/howlcipher/howlboard" target="_blank" rel="noreferrer">github.com/howlcipher/howlboard</a>
+        </footer>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
