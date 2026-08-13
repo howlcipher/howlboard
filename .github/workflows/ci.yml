@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check out the reproducible HowlFrame candidate source
+        uses: actions/checkout@v4
+        with:
+          repository: howlcipher/howlframe
+          ref: 628066d2e86ae7991cd491b0832547ff55123725
+          path: .howlframe
+
+      - name: Build the candidate CLI
+        run: |
+          mkdir -p bin
+          cd .howlframe
+          go build -o ../bin/howlframe ./howlframe.go
+
+      - name: Run HowlBoard integration validation
+        run: make HOWLFRAME_BIN="$GITHUB_WORKSPACE/bin/howlframe" test

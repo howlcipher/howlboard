@@ -7,12 +7,33 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
+    <main class="container">
         <h1>HowlBoard</h1>
-        <button id="load-btn">Load Tasks</button>
-        <div id="error" class="error"></div>
-        <div id="tasks"></div>
-    </div>
+        <p class="intro">A small, process-local task board powered by HowlFrame.</p>
+
+        <section aria-labelledby="create-heading">
+            <h2 id="create-heading">Create a task</h2>
+            <label for="new-task-title">Task title</label>
+            <input id="new-task-title" type="text" maxlength="120" autocomplete="off">
+            <button id="create-btn" type="button">Create task</button>
+        </section>
+
+        <section aria-labelledby="tasks-heading">
+            <div class="section-heading">
+                <h2 id="tasks-heading">Tasks</h2>
+                <button id="load-btn" type="button">Refresh tasks</button>
+            </div>
+            <p id="error" class="error" role="alert" aria-live="polite"></p>
+            <pre id="tasks" aria-live="polite">Loading tasks…</pre>
+        </section>
+
+        <section aria-labelledby="complete-heading">
+            <h2 id="complete-heading">Mark a task complete</h2>
+            <label for="task-id">Task ID</label>
+            <input id="task-id" type="text" inputmode="numeric" pattern="[0-9]+" autocomplete="off">
+            <button id="complete-btn" type="button">Mark complete</button>
+        </section>
+    </main>
     <script src="app.js"></script>
 </body>
 </html>

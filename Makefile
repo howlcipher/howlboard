@@ -1,22 +1,36 @@
-HOWLFRAME_BIN ?= ./howlframe_bin
+HOWLFRAME_BIN ?= howlframe
+BACKEND_ARTIFACT ?= build/howlboard.hfbc
 
-.PHONY: all build run run-frontend clean
+.PHONY: all check build backend frontend run run-frontend test browser-test clean
 
 all: build
 
-build:
-	@echo "Building frontend..."
+check:
+	$(HOWLFRAME_BIN) check backend/server.howl
+	$(HOWLFRAME_BIN) check frontend/app.howl
+
+build: backend frontend
+
+backend:
+	mkdir -p build
+	$(HOWLFRAME_BIN) build backend/server.howl -o $(BACKEND_ARTIFACT)
+
+frontend:
+	# v0.1's documented JavaScript compatibility backend emits app.js. Its
+	# public `build` subcommand is intentionally HFBC-only.
 	$(HOWLFRAME_BIN) frontend/app.howl -o frontend
-	@echo "Building backend..."
-	$(HOWLFRAME_BIN) -compile-bc backend/server.howl -o backend/server.hfbc
 
-run:
-	@echo "Running backend on port 8080..."
-	$(HOWLFRAME_BIN) -run-bc -allow-caps network,database backend/server.hfbc
+run: backend
+	$(HOWLFRAME_BIN) run --allow-caps network,database $(BACKEND_ARTIFACT)
 
-run-frontend:
-	@echo "Serving frontend on port 3000..."
+run-frontend: frontend
 	python3 -m http.server 3000 -d frontend
 
+test:
+	HOWLFRAME_BIN=$(HOWLFRAME_BIN) ./tests/http_integration.sh
+
+browser-test: build
+	HOWLFRAME_BIN=$(HOWLFRAME_BIN) python3 tests/browser_flow.py
+
 clean:
-	rm -f frontend/app.js frontend/app.test.js backend/server.hfbc
+	rm -rf build frontend/app.js frontend/app.test.js

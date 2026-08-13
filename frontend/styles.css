@@ -14,7 +14,79 @@ body {
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
+section {
+    border-top: 1px solid #d8dee9;
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+}
+
+h1, h2 {
+    color: #172033;
+}
+
+h2 {
+    font-size: 1.1rem;
+    margin: 0 0 .75rem;
+}
+
+.intro {
+    color: #4a5568;
+}
+
+label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: .35rem;
+}
+
+input {
+    border: 1px solid #64748b;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font: inherit;
+    padding: .5rem;
+    width: min(100%, 34rem);
+}
+
+button {
+    background: #1d4ed8;
+    border: 1px solid #1d4ed8;
+    border-radius: 4px;
+    color: #fff;
+    cursor: pointer;
+    font: inherit;
+    margin: .5rem .5rem .5rem 0;
+    padding: .5rem .75rem;
+}
+
+button:focus, input:focus {
+    outline: 3px solid #f59e0b;
+    outline-offset: 2px;
+}
+
+.section-heading {
+    align-items: center;
+    display: flex;
+    gap: .75rem;
+    justify-content: space-between;
+}
+
+.section-heading button {
+    margin: 0;
+}
+
+#tasks {
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    min-height: 4rem;
+    overflow-wrap: anywhere;
+    padding: .75rem;
+    white-space: pre-wrap;
+}
+
 .error {
-    color: red;
-    margin-bottom: 10px;
+    color: #b42318;
+    font-weight: 600;
+    min-height: 1.2rem;
 }
