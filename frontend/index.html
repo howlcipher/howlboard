@@ -20,12 +20,27 @@
 
         <div id="error" class="error"></div>
 
+        <div class="filters">
+            <input type="text" id="filter-search" placeholder="Search tasks..." />
+            <select id="filter-status">
+                <option value="">All Statuses</option>
+                <option value="BACKLOG">BACKLOG</option>
+                <option value="READY">READY</option>
+                <option value="IN_PROGRESS">IN_PROGRESS</option>
+                <option value="BLOCKED">BLOCKED</option>
+                <option value="DONE">DONE</option>
+            </select>
+            <input type="text" id="filter-priority" placeholder="Priority (e.g. HIGH)" />
+            <input type="text" id="filter-labels" placeholder="Labels" />
+            <button id="filter-btn">Filter</button>
+        </div>
+
         <div class="controls">
             <div class="controls-header">CREATE_TASK</div>
             <div class="form-group">
                 <input type="text" id="new-task-title" placeholder="Task Title" />
                 <input type="text" id="new-task-priority" placeholder="Priority (e.g. HIGH)" />
-                <input type="text" id="new-task-tags" placeholder="Tags (comma separated)" />
+                <input type="text" id="new-task-labels" placeholder="Labels (comma separated)" />
             </div>
             <textarea id="new-task-desc" placeholder="Task Description" rows="2"></textarea>
             <button id="add-btn">Submit Task</button>
@@ -54,8 +69,14 @@
             </div>
         </div>
 
+        <div class="activity-drawer" id="activity-drawer">
+            <h3>Activity History</h3>
+            <div id="activity-list"></div>
+        </div>
+
         <footer>
             <span><span class="status-dot"></span>STATUS: ACTIVE &mdash; HOWLBOARD://APP</span>
+            <button id="activity-btn" style="margin-left:auto;">Toggle Activity</button>
         </footer>
     </div>
     <script src="app.js"></script>

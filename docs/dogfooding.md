@@ -37,3 +37,28 @@ During the expansion of HowlBoard from a simple list into a full 5-column determ
 ## Verification
 - HowlFrame changes for `set_html` and `toggle_class` successfully applied.
 - `app.howl` now natively handles the DOM for the entire HowlBoard UI without handwritten JS.
+
+## Persistence, Filters, and Activity History
+
+HowlBoard now persists task records and records every creation, valid state transition, and deletion in an activity history. It also adds client-side filtering by title, status, priority, and labels.
+
+### 5. Response Context Does Not Cross Bytecode Function Calls
+
+* **Requirement:** Apply the same CORS headers to each HTTP route through a reusable function.
+* **Limitation:** A `res_header` call inside a `defun` cannot access the response writer captured by the route and the VM panics with `no response writer`.
+* **Classification:** A (Runtime context propagation bug)
+* **Workaround:** Set CORS headers directly in each route body.
+
+### 6. Bytecode Boolean Literals Are Not Values
+
+* **Requirement:** Track whether a requested state transition matches the allowed state machine.
+* **Limitation:** In bytecode, `true` and `false` are resolved as identifiers instead of boolean values.
+* **Classification:** A (Bytecode compiler bug)
+* **Workaround:** Use equality expressions to construct boolean values.
+
+### 7. Empty Bytecode Lists Serialize as JSON Null
+
+* **Requirement:** Return an empty task or activity list as a JSON array.
+* **Limitation:** An empty HowlFrame list serializes to `null` in bytecode responses.
+* **Classification:** A (Runtime serialization bug)
+* **Workaround:** The generated frontend treats a missing or null list as empty; the contract test records this behavior explicitly.

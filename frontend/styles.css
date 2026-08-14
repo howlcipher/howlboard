@@ -264,3 +264,34 @@ footer {
   margin-right: 0.5rem;
   animation: blink 2s step-end infinite;
 }
+
+.visible {
+  display: block !important;
+}
+
+.filters {
+  background: var(--bg-header);
+  border: 2px solid var(--border-strong);
+  padding: 1rem;
+  margin-bottom: 2rem;
+  display: flex;
+  gap: 1rem;
+}
+
+.filters > * {
+  flex: 1;
+}
+
+.activity-drawer {
+  display: none;
+  background: var(--bg-code);
+  border: 2px solid var(--border-strong);
+  padding: 1rem;
+  margin-top: 2rem;
+}
+
+.activity-item {
+  border-bottom: 1px dashed var(--border);
+  padding: 0.5rem 0;
+  font-size: 0.85rem;
+}

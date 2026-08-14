@@ -1,6 +1,6 @@
 HOWLFRAME_BIN ?= ./howlframe_bin
 
-.PHONY: all build run run-frontend clean
+.PHONY: all build test run run-frontend clean
 
 all: build
 
@@ -9,6 +9,9 @@ build:
 	$(HOWLFRAME_BIN) frontend/app.howl -o frontend
 	@echo "Building backend..."
 	$(HOWLFRAME_BIN) -compile-bc backend/server.howl -o backend/server.hfbc
+
+test: build
+	cd backend && go test contract_test.go
 
 run:
 	@echo "Running backend on port 8080..."
