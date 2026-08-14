@@ -19,7 +19,9 @@ See `docs/dogfooding.md` for a running journal of how HowlBoard has exposed bugs
 HowlBoard enforces a strict, deterministic state machine policy for tasks (`BACKLOG` -> `READY` -> `IN_PROGRESS` -> `BLOCKED`/`DONE`). This deterministic policy is implemented in the backend `server.howl` file using HowlFrame's native AST and HTTP capabilities.
 
 * **Frontend:** `frontend/app.howl` compiles via HowlFrame's JS backend into `frontend/app.js`, making native DOM calls.
-* **Backend:** `backend/server.howl` compiles into `server.hfbc` and runs on the HowlFrame Bytecode VM using the `memory://howlboard` native store.
+* **Backend:** `backend/server.howl` compiles into `server.hfbc` and runs on the HowlFrame Bytecode VM. Tasks are stored in `file://howlboard.json` and activity in `file://howlboard_activity.json`, so they survive a server restart.
+
+File-backed stores make this single-process reference application durable without a database service. They are not a multi-process concurrency solution.
 
 ## Getting Started
 
@@ -36,11 +38,15 @@ To build and run the live application:
    cd ../howlboard
    make build
    ```
-4. Run the backend VM:
+4. Verify the build and API contract:
+   ```bash
+   make test
+   ```
+5. Run the backend VM:
    ```bash
    make run
    ```
-5. In a separate terminal, serve the frontend:
+6. In a separate terminal, serve the frontend:
    ```bash
    make run-frontend
    ```
