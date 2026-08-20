@@ -1,7 +1,7 @@
 /**
  * Howl Ecosystem Shared Client Script - HowlBoard
  * Features: Interactive deterministic state machine board demo, telemetry console,
- * code snippet copy, light/dark theme toggle.
+ * code snippet copy, light/dark theme toggle, ecosystem drawer.
  */
 
 const demoTasks = [
@@ -14,12 +14,6 @@ const demoTasks = [
   { id: 7, title: "Telemetry Heartbeat Aggregation", description: "Stream real-time VM instruction counts to dashboard console.", priority: "LOW", tags: "telemetry", status: "BACKLOG" }
 ];
 
-// Valid deterministic transitions:
-// BACKLOG -> READY
-// READY -> IN_PROGRESS, BACKLOG
-// IN_PROGRESS -> BLOCKED, DONE, READY
-// BLOCKED -> IN_PROGRESS, READY
-// DONE -> IN_PROGRESS (reopen)
 const validTransitions = {
   "BACKLOG": ["READY"],
   "READY": ["IN_PROGRESS", "BACKLOG"],
@@ -140,6 +134,63 @@ document.addEventListener('DOMContentLoaded', () => {
       applyTheme(next);
     });
   }
+
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    if (!localStorage.getItem('howl-theme')) {
+      applyTheme(e.matches ? 'dark' : 'light');
+    }
+  });
+
+  // Hamburger / Ecosystem Drawer
+  const drawerToggle = document.getElementById('eco-menu-toggle');
+  const drawer = document.getElementById('eco-drawer');
+  const drawerOverlay = document.getElementById('eco-drawer-overlay');
+  const drawerCloseBtn = document.getElementById('eco-drawer-close');
+
+  const openDrawer = () => {
+    if (drawer && drawerOverlay) {
+      drawer.classList.add('active');
+      drawerOverlay.classList.add('active');
+      if (drawerToggle) drawerToggle.setAttribute('aria-expanded', 'true');
+      document.body.style.overflow = 'hidden';
+      if (drawerCloseBtn) drawerCloseBtn.focus();
+    }
+  };
+
+  const closeDrawer = () => {
+    if (drawer && drawerOverlay) {
+      drawer.classList.remove('active');
+      drawerOverlay.classList.remove('active');
+      if (drawerToggle) {
+        drawerToggle.setAttribute('aria-expanded', 'false');
+        drawerToggle.focus();
+      }
+      document.body.style.overflow = '';
+    }
+  };
+
+  if (drawerToggle) {
+    drawerToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isActive = drawer && drawer.classList.contains('active');
+      if (isActive) closeDrawer();
+      else openDrawer();
+    });
+  }
+
+  if (drawerCloseBtn) {
+    drawerCloseBtn.addEventListener('click', closeDrawer);
+  }
+
+  if (drawerOverlay) {
+    drawerOverlay.addEventListener('click', closeDrawer);
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && drawer && drawer.classList.contains('active')) {
+      closeDrawer();
+    }
+  });
 
   // Code Copy Buttons
   document.querySelectorAll('.code-container').forEach((container) => {
