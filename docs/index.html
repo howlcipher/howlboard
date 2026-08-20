@@ -3,152 +3,420 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="HowlBoard - A full-stack deterministic board application to dogfood HowlFrame.">
+    <meta name="description" content="HowlBoard is a full-stack deterministic board application and evaluation surface used to dogfood and stress-test the HowlFrame language, runtime, and capability boundaries.">
     <link rel="canonical" href="https://howlcipher.github.io/howlboard/">
 
+    <!-- Open Graph Metadata -->
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="HowlBoard">
-    <meta property="og:title" content="HowlBoard | HowlFrame Dogfooding App">
-    <meta property="og:description" content="A full-stack deterministic board built to push the limits of HowlFrame.">
+    <meta property="og:title" content="HowlBoard | Full-Stack Dogfooding &amp; Evaluation Surface">
+    <meta property="og:description" content="Full-stack deterministic board proving HowlFrame frontend compilation, bytecode VM persistence, and state transition invariant policies.">
     <meta property="og:url" content="https://howlcipher.github.io/howlboard/">
+    <meta property="og:image" content="https://howlcipher.github.io/howlboard/social-preview.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="HowlBoard deterministic state matrix and telemetry evaluation surface">
 
-    <title>HowlBoard | HowlFrame Dogfooding App</title>
+    <!-- Twitter Card Metadata -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="HowlBoard | Full-Stack Dogfooding &amp; Evaluation Surface">
+    <meta name="twitter:description" content="Full-stack deterministic board proving HowlFrame frontend compilation, bytecode VM persistence, and state transition invariant policies.">
+    <meta name="twitter:image" content="https://howlcipher.github.io/howlboard/social-preview.png">
+    <meta name="twitter:image:alt" content="HowlBoard deterministic state matrix and telemetry evaluation surface">
+
+    <title>HowlBoard | Full-Stack Dogfooding &amp; Evaluation Surface</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="alternate icon" type="image/png" href="favicon.png">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <div>
-                <p class="kicker">// full-stack howlframe dogfood / deterministic task state</p>
-                <h1>HowlBoard</h1>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="layout-container">
+        <!-- Site Header -->
+        <header class="site-header">
+            <div class="header-top">
+                <div class="header-brand">
+                    <a href="https://howlcipher.github.io/howlboard/" class="brand-sig">HOWL <span>//</span> HOWLBOARD</a>
+                    <span class="subsystem-tag">SYS_ID: HB-EVAL-05</span>
+                </div>
+                <div class="header-actions">
+                    <button id="theme-toggle" class="btn-theme-toggle" type="button" aria-pressed="false">
+                        <span aria-hidden="true">☾</span> [DARK_MODE]
+                    </button>
+                    <a href="https://github.com/howlcipher/howlboard" class="btn-tech btn-tech-primary" target="_blank" rel="noreferrer">
+                        [ VIEW ON GITHUB ]
+                    </a>
+                </div>
             </div>
-            <div class="header-actions">
-                <a href="https://github.com/howlcipher/howlboard" target="_blank" rel="noreferrer">[ View on GitHub ]</a>
-                <a href="https://github.com/howlcipher/howlframe" target="_blank" rel="noreferrer">[ View HowlFrame ]</a>
-                <button id="theme-toggle" type="button">Switch to light theme</button>
+
+            <!-- Ecosystem Navigation Strip -->
+            <div class="howl-ecosystem-bar" aria-label="Howl Ecosystem Navigation">
+                <div class="eco-label">HOWL ECOSYSTEM</div>
+                <nav class="eco-nav">
+                    <a href="https://howlcipher.github.io/howlframe/" class="eco-link">HowlFrame // VM</a>
+                    <a href="https://howlcipher.github.io/howlplane/" class="eco-link">HowlPlane // Control</a>
+                    <a href="https://howlcipher.github.io/howlnotes/" class="eco-link">HowlNotes // Knowledge</a>
+                    <a href="https://howlcipher.github.io/changeops/" class="eco-link">ChangeOps // Authority</a>
+                    <a href="https://howlcipher.github.io/howlboard/" class="eco-link active" aria-current="page">HowlBoard // Telemetry</a>
+                </nav>
             </div>
+
+            <!-- In-Page Section Navigation -->
+            <nav class="section-nav" aria-label="Page sections">
+                <span class="section-nav-label">READ_PATH:</span>
+                <a href="#overview">01_Overview</a>
+                <a href="#architecture">02_Architecture</a>
+                <a href="#demo">03_InteractiveDemo</a>
+                <a href="#dogfooding">04_Evidence</a>
+                <a href="#capability">05_PolicyModel</a>
+                <a href="#build">06_BuildGuide</a>
+                <a href="#status">07_Status</a>
+            </nav>
         </header>
 
+        <!-- Main Content Surface -->
         <main id="main-content">
-            <section id="overview">
-                <h2>Overview</h2>
-                <p>HowlBoard is a full-stack task/board application used to test whether real applications can be built with <strong>HowlFrame</strong>.</p>
-                <p>It exists to turn language and runtime limitations into real application feedback. By strictly using HowlFrame for both the frontend JavaScript generation and the bytecode backend, it validates the platform's ability to handle CRUD, state mutations, deterministic transition rules, and browser interaction.</p>
-            </section>
-
-            <section id="architecture">
-                <h2>Architecture</h2>
-                <pre><code>frontend/*.howl
-      |
-      v
-HowlFrame JS backend
-      |
-      v
-browser
-
-      HTTP / JSON
-
-backend/*.howl
-      |
-      v
-HowlFrame bytecode
-      |
-      v
-HowlFrame VM
-      |
-      v
-file-backed native stores</code></pre>
-            </section>
-
-            <section id="dogfooding">
-                <h2>Dogfooding Evidence</h2>
-                <p>HowlBoard has already materially improved HowlFrame. Building this application exposed real friction points and bugs in the compiler and runtime. These were fixed directly in HowlFrame.</p>
-                <ul>
-                    <li><strong>HTML DOM Mutability:</strong> Discovered the JS backend lacked arbitrary HTML node injection and class toggling. Added <code>set_html</code> and <code>toggle_class</code> to HowlFrame's IR and JS backend.</li>
-                    <li><strong>Network & CORS:</strong> Exposed missing primitives for reading request methods and setting response headers. Added <code>req_method</code> and <code>res_header</code> to the HTTP server capabilities.</li>
-                    <li><strong>Type Checker Bugs:</strong> Encountered a compiler panic because <code>try_let</code> and <code>parse_json</code> were not registered in the JS backend checker. Fixed the AST walker.</li>
-                    <li><strong>Web Input:</strong> Discovered the inability to read DOM input text. Added the <code>dom_value</code> primitive to the JS backend.</li>
-                </ul>
-                <p>The feedback loop is exactly: <em>Application requirement → HowlFrame implementation → Compiler/runtime friction → Language/runtime improvement → Application continues</em>.</p>
-            </section>
-
-            <section id="capability">
-                <h2>Capability & Authority Model</h2>
-                <p>HowlBoard implements strict, deterministic state transitions. A task in <code>BACKLOG</code> cannot jump directly to <code>BLOCKED</code> or <code>DONE</code> without going through <code>READY</code> and <code>IN_PROGRESS</code>.</p>
-                <p>For future AI involvement, the application acts as the enforcement boundary:</p>
-                <pre><code>AI proposal
-   ↓
-HowlBoard deterministic policy (can_transition)
-   ↓
-ALLOW / DENY / REQUIRE_APPROVAL
-   ↓
-bounded state mutation</code></pre>
-            </section>
-
-            <section id="demo">
-                <h2>Static Demo Board</h2>
-                <p>GitHub Pages operates on static hosting. The following is a visually representative read-only demonstration of the board interface without the live HowlFrame VM backend.</p>
-                <div class="board">
-                    <div class="column" id="col-backlog">
-                        <div class="column-header">BACKLOG</div>
-                        <div id="demo-backlog"></div>
+            <!-- Hero Panel -->
+            <section class="hero-panel" aria-labelledby="main-title">
+                <div class="hero-banner">
+                    <span>EVALUATION_CONSOLE // FULL-STACK REFERENCE</span>
+                    <span>APPLICATION: HOWLFRAME DOGFOODING &amp; STATE INVARIANTS</span>
+                </div>
+                <div class="hero-body">
+                    <div class="hero-header-block">
+                        <p class="hero-kicker">// observation / stress testing / evaluation surface</p>
+                        <h1 id="main-title" class="hero-title">HowlBoard <span class="jp-sub">ハウルボード // 2026</span></h1>
+                        <p class="hero-lead">
+                            HowlBoard is the flagship external consumer and reference application for HowlFrame. It is a full-stack deterministic task board built strictly with HowlFrame for both the browser client (<code>web_app</code>) and the backend (<code>server</code>).
+                        </p>
                     </div>
-                    <div class="column" id="col-ready">
-                        <div class="column-header">READY</div>
-                        <div id="demo-ready"></div>
+
+                    <div class="axiom-card" role="region" aria-label="Core Purpose">
+                        <strong>AXIOM // APPLICATION FEEDBACK DRIVES PLATFORM MATURITY.</strong> The goal is not just another task board. The true goal is to prove how much of a legitimate full-stack system can be expressed through HowlFrame, discover compiler bugs, and harden the language under real application stress.
                     </div>
-                    <div class="column" id="col-inprogress">
-                        <div class="column-header">IN_PROGRESS</div>
-                        <div id="demo-inprogress"></div>
+
+                    <div class="hero-actions">
+                        <a href="https://github.com/howlcipher/howlboard" class="btn-tech btn-tech-primary" target="_blank" rel="noreferrer">
+                            [ CLONE REPOSITORY ]
+                        </a>
+                        <a href="#demo" class="btn-tech">
+                            [ INTERACTIVE DEMO ]
+                        </a>
+                        <a href="#dogfooding" class="btn-tech">
+                            [ DOGFOOD EVIDENCE ]
+                        </a>
                     </div>
-                    <div class="column" id="col-blocked">
-                        <div class="column-header">BLOCKED</div>
-                        <div id="demo-blocked"></div>
-                    </div>
-                    <div class="column" id="col-done">
-                        <div class="column-header">DONE</div>
-                        <div id="demo-done"></div>
+
+                    <!-- Hero Architecture Diagram -->
+                    <div class="hero-diagram-wrap" aria-label="HowlBoard Full-Stack Architecture">
+                        <div class="diagram-header">
+                            <span>STACK_FLOW // FRONTEND COMPILATION ↔ REST API ↔ BYTECODE VM</span>
+                            <span>PERSISTENCE: DUAL FILE STORES</span>
+                        </div>
+                        <div class="signal-grid">
+                            <div class="console-step step-ui">
+                                <div class="cs-header">01 // FRONTEND</div>
+                                <div class="cs-body">
+                                    <div class="cs-title">frontend/*.howl</div>
+                                    <div class="cs-desc">Compiles via HowlFrame JS backend into <code>app.js</code> making native browser DOM mutations.</div>
+                                    <div class="cs-tag">[TARGET: JAVASCRIPT]</div>
+                                </div>
+                            </div>
+                            <div class="console-step step-http">
+                                <div class="cs-header">02 // PROTOCOL</div>
+                                <div class="cs-body">
+                                    <div class="cs-title">HTTP / REST API</div>
+                                    <div class="cs-desc">Async JSON payloads for task updates, status moves, and activity feed telemetry.</div>
+                                    <div class="cs-tag">[PORT: 8080]</div>
+                                </div>
+                            </div>
+                            <div class="console-step step-vm">
+                                <div class="cs-header">03 // BACKEND</div>
+                                <div class="cs-body">
+                                    <div class="cs-title">backend/*.howl</div>
+                                    <div class="cs-desc">Compiles to <code>server.hfbc</code> bytecode running inside the HowlFrame VM under finite budget.</div>
+                                    <div class="cs-tag">[RUNTIME: BYTECODE VM]</div>
+                                </div>
+                            </div>
+                            <div class="console-step step-store">
+                                <div class="cs-header">04 // PERSISTENCE</div>
+                                <div class="cs-body">
+                                    <div class="cs-title">Native Record Store</div>
+                                    <div class="cs-desc">Persisted to <code>howlboard.json</code> &amp; <code>howlboard_activity.json</code> across restarts.</div>
+                                    <div class="cs-tag">[STORAGE: DURABLE]</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
 
-            <section id="build">
-                <h2>Build It</h2>
-                <p>To run the live full-stack application on your own machine:</p>
-                <pre><code># 1. Clone repositories side-by-side
+            <!-- 01 Overview -->
+            <section id="overview" class="tech-panel">
+                <div class="tech-header">
+                    <h2><span class="sec-id">SECTION // 01</span> Purpose &amp; Feedback Loop</h2>
+                    <span class="subsystem-tag">HB-MOD-PURPOSE</span>
+                </div>
+                <div class="tech-body">
+                    <p>
+                        HowlBoard acts as the primary evaluation surface for HowlFrame. By strictly using HowlFrame for both the frontend JavaScript generation and the bytecode backend, it continuously exercises the platform's ability to handle CRUD, state mutations, deterministic transition rules, and browser interaction.
+                    </p>
+                    <p>
+                        The feedback loop is direct:
+                        <strong>Application requirement &rarr; HowlFrame implementation &rarr; Compiler/runtime friction &rarr; Language/runtime improvement &rarr; Application continues.</strong>
+                    </p>
+                </div>
+            </section>
+
+            <!-- 02 Architecture -->
+            <section id="architecture" class="tech-panel">
+                <div class="tech-header">
+                    <h2><span class="sec-id">SECTION // 02</span> Full-Stack Architecture</h2>
+                    <span class="subsystem-tag">HB-MOD-ARCH</span>
+                </div>
+                <div class="tech-body">
+                    <div class="code-container">
+                        <div class="code-header">
+                            <span class="code-title">[SCHEMATIC // FULLSTACK_PIPELINE]</span>
+                            <span class="subsystem-tag">FLOW_GRAPH</span>
+                        </div>
+                        <pre><code>frontend/app.howl
+      │
+      ▼
+HowlFrame JS Backend (Emitter)
+      │
+      ▼
+Browser DOM &amp; Vanilla JavaScript (app.js)
+      │
+      │  HTTP REST / JSON Requests
+      ▼
+backend/server.howl
+      │
+      ▼
+HowlFrame Bytecode Compiler (-compile-bc)
+      │
+      ▼
+HowlFrame Bytecode VM (server.hfbc)
+      │
+      ▼
+File-Backed Native Record Stores (howlboard.json &amp; howlboard_activity.json)</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 03 Interactive Demo Board -->
+            <section id="demo" class="tech-panel">
+                <div class="tech-header">
+                    <h2><span class="sec-id">SECTION // 03</span> Interactive State Machine Console</h2>
+                    <span class="subsystem-tag">HB-MOD-DEMO</span>
+                </div>
+                <div class="tech-body">
+                    <p>
+                        The board below is an interactive client demonstration of HowlBoard's deterministic state machine policy (<code>BACKLOG &rarr; READY &rarr; IN_PROGRESS &rarr; BLOCKED / DONE</code>). Click the transition action buttons on any card to observe policy evaluation:
+                    </p>
+
+                    <div class="demo-board-wrap">
+                        <div class="demo-board-header">
+                            <span>CONSOLE_TELEMETRY: STATE TRANSITION ENGINE</span>
+                            <span>POLICY: can_transition ENFORCED</span>
+                        </div>
+                        <div id="telemetry-readout" class="demo-console-readout">
+                            [SYSTEM READY] Click any task action button below to test deterministic state machine transition invariants.
+                        </div>
+                        <div class="board-columns">
+                            <div class="board-column">
+                                <div class="col-header">BACKLOG</div>
+                                <div id="demo-backlog" class="col-cards"></div>
+                            </div>
+                            <div class="board-column">
+                                <div class="col-header">READY</div>
+                                <div id="demo-ready" class="col-cards"></div>
+                            </div>
+                            <div class="board-column">
+                                <div class="col-header">IN_PROGRESS</div>
+                                <div id="demo-inprogress" class="col-cards"></div>
+                            </div>
+                            <div class="board-column">
+                                <div class="col-header">BLOCKED</div>
+                                <div id="demo-blocked" class="col-cards"></div>
+                            </div>
+                            <div class="board-column">
+                                <div class="col-header">DONE</div>
+                                <div id="demo-done" class="col-cards"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 04 Dogfooding Evidence -->
+            <section id="dogfooding" class="tech-panel">
+                <div class="tech-header">
+                    <h2><span class="sec-id">SECTION // 04</span> Dogfooding Evidence &amp; Discovered Fixes</h2>
+                    <span class="subsystem-tag">HB-MOD-EVIDENCE</span>
+                </div>
+                <div class="tech-body">
+                    <p>
+                        Building HowlBoard directly surfaced missing primitives and bugs in HowlFrame, which were fixed upstream:
+                    </p>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Discovered Friction / Bug</th>
+                                    <th>Subsystem Affected</th>
+                                    <th>Resolution in HowlFrame</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>HTML DOM Mutability</strong></td>
+                                    <td>JS Backend &amp; IR</td>
+                                    <td>Added <code>set_html</code> and <code>toggle_class</code> to HowlFrame's IR and JS emitter</td>
+                                    <td><span class="chip chip-pass">RESOLVED</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Network &amp; CORS Headers</strong></td>
+                                    <td>HTTP Server Runtime</td>
+                                    <td>Added <code>req_method</code> and <code>res_header</code> capability opcodes to VM</td>
+                                    <td><span class="chip chip-pass">RESOLVED</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Type Checker AST Panics</strong></td>
+                                    <td>Frontend Checker</td>
+                                    <td>Registered <code>try_let</code> and <code>parse_json</code> in JS backend checker walker</td>
+                                    <td><span class="chip chip-pass">RESOLVED</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Browser Input Value Reads</strong></td>
+                                    <td>JS Backend</td>
+                                    <td>Added <code>dom_value</code> primitive to read text inputs without raw JS hacks</td>
+                                    <td><span class="chip chip-pass">RESOLVED</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 05 Capability Model -->
+            <section id="capability" class="tech-panel">
+                <div class="tech-header">
+                    <h2><span class="sec-id">SECTION // 05</span> Capability &amp; State Policy Model</h2>
+                    <span class="subsystem-tag">HB-MOD-POLICY</span>
+                </div>
+                <div class="tech-body">
+                    <p>
+                        HowlBoard enforces a deterministic state machine policy. A task in <code>BACKLOG</code> cannot jump directly to <code>BLOCKED</code> or <code>DONE</code> without transitioning through <code>READY</code> and <code>IN_PROGRESS</code>:
+                    </p>
+                    <div class="code-container">
+                        <div class="code-header">
+                            <span class="code-title">[HOWL // POLICY_INVARIANT]</span>
+                            <span class="subsystem-tag">TRANSITION_GATE</span>
+                        </div>
+                        <pre><code>(defun can_transition (from_status to_status)
+  (if (= from_status "BACKLOG")
+    (= to_status "READY")
+    (if (= from_status "READY")
+      (or (= to_status "IN_PROGRESS") (= to_status "BACKLOG"))
+      (if (= from_status "IN_PROGRESS")
+        (or (= to_status "BLOCKED") (= to_status "DONE") (= to_status "READY"))
+        (if (= from_status "BLOCKED")
+          (or (= to_status "IN_PROGRESS") (= to_status "READY"))
+          (if (= from_status "DONE")
+            (= to_status "IN_PROGRESS")
+            false))))))</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 06 Build -->
+            <section id="build" class="tech-panel">
+                <div class="tech-header">
+                    <h2><span class="sec-id">SECTION // 06</span> Build &amp; Run Instructions</h2>
+                    <span class="subsystem-tag">HB-MOD-BUILD</span>
+                </div>
+                <div class="tech-body">
+                    <div class="code-container">
+                        <div class="code-header">
+                            <span class="code-title">[BASH // BUILD_AND_RUN]</span>
+                            <button class="btn-copy" type="button">[COPY]</button>
+                        </div>
+                        <pre><code># 1. Clone repositories side-by-side
 git clone https://github.com/howlcipher/howlframe.git
 git clone https://github.com/howlcipher/howlboard.git
 
-# 2. Build HowlFrame compiler
+# 2. Build HowlFrame compiler binary
 cd howlframe
 go build -o ../howlboard/howlframe_bin howlframe.go
 
-# 3. Build HowlBoard (compiles frontend and backend)
+# 3. Build HowlBoard (compiles frontend JS and backend HFBC)
 cd ../howlboard
 make build
 
-# 4. Run the backend
+# 4. Run the backend VM server
 make run
 
-# 5. In a separate terminal, serve the frontend
+# 5. In a separate terminal, serve the frontend assets
 make run-frontend</code></pre>
+                    </div>
+                </div>
             </section>
 
-            <section id="status">
-                <h2>Current Status</h2>
-                <ul>
-                    <li><strong>Working:</strong> Full frontend/backend compilation via HowlFrame, basic CRUD, explicit deterministic state transitions, native memory store.</li>
-                    <li><strong>Limitations:</strong> Deeply nested string concatenation in HowlFrame Lisp syntax is highly unergonomic and error-prone. Arrays/Lists are not easily handled in the REST payload without more complex AST loops.</li>
-                    <li><strong>Planned:</strong> Integration with LLM proposal systems, where the agent suggests updates that are bounded by the deterministic <code>can_transition</code> policy.</li>
-                </ul>
+            <!-- 07 Status -->
+            <section id="status" class="tech-panel">
+                <div class="tech-header">
+                    <h2><span class="sec-id">SECTION // 07</span> Implementation Status &amp; Roadmap</h2>
+                    <span class="subsystem-tag">HB-MOD-STATUS</span>
+                </div>
+                <div class="tech-body">
+                    <div class="grid-2col">
+                        <div>
+                            <h3>Completed Features</h3>
+                            <ul>
+                                <li>Full frontend and backend compilation via HowlFrame</li>
+                                <li>Deterministic Kanban task state transitions</li>
+                                <li>Native disk store persistence (survives restart)</li>
+                                <li>Real-time telemetry event logging</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3>Active Exploration</h3>
+                            <ul>
+                                <li>String interpolation ergonomics in Howl AST</li>
+                                <li>Complex array loops in REST JSON decoding</li>
+                                <li>LLM-assisted task generation bounded by <code>can_transition</code></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
             </section>
         </main>
 
-        <footer>
-            <span><span class="status-dot"></span>STATUS: ACTIVE &mdash; HOWLBOARD://PAGES_SITE</span>
-            <a href="https://github.com/howlcipher/howlboard" target="_blank" rel="noreferrer">github.com/howlcipher/howlboard</a>
+        <!-- Site Footer -->
+        <footer class="site-footer">
+            <div class="footer-telemetry">
+                <div class="status-indicator">
+                    <span class="status-dot" aria-hidden="true"></span>
+                    <span>SYS_STATUS: ACTIVE // HOWLBOARD-EVALUATION-SURFACE</span>
+                </div>
+                <div>AUTH // HOWL ECOSYSTEM 2026</div>
+            </div>
+            <div class="footer-links">
+                <nav class="footer-nav" aria-label="Ecosystem Links">
+                    <a href="https://howlcipher.github.io/howlframe/">HowlFrame</a>
+                    <a href="https://howlcipher.github.io/howlplane/">HowlPlane</a>
+                    <a href="https://howlcipher.github.io/howlnotes/">HowlNotes</a>
+                    <a href="https://howlcipher.github.io/changeops/">ChangeOps</a>
+                    <a href="https://howlcipher.github.io/howlboard/">HowlBoard</a>
+                </nav>
+                <a href="#main-content">[ BACK TO TOP ]</a>
+            </div>
         </footer>
     </div>
+
     <script src="script.js"></script>
 </body>
 </html>
