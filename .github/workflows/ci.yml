@@ -33,8 +33,7 @@ jobs:
 
       - name: Run Backend Contract Tests
         run: |
-          cd backend
-          go test contract_test.go
+          make test
 
       - name: Verify SEO Metadata & Artifacts
         run: |
