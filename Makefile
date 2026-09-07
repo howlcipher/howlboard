@@ -15,7 +15,7 @@ test: build
 
 run:
 	@echo "Running backend on port 8080..."
-	$(HOWLFRAME_BIN) -run-bc -allow-caps network,database backend/server.hfbc
+	$(HOWLFRAME_BIN) -run-bc -allow-caps network,database,filesystem backend/server.hfbc
 
 run-frontend:
 	@echo "Serving frontend on port 3000..."

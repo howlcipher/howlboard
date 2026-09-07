@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Build, Contract Tests & SEO Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Build HowlFrame Binary
+        run: |
+          git clone --depth 1 https://github.com/howlcipher/howlframe.git /tmp/howlframe
+          cd /tmp/howlframe
+          go build -o $GITHUB_WORKSPACE/howlframe_bin howlframe.go
+          chmod +x $GITHUB_WORKSPACE/howlframe_bin
+
+      - name: Run Backend Contract Tests
+        run: |
+          make test
+
+      - name: Verify SEO Metadata & Artifacts
+        run: |
+          python3 scripts/test_seo.py
+
