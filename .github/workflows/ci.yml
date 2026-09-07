@@ -24,6 +24,13 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Build HowlFrame Binary
+        run: |
+          git clone --depth 1 https://github.com/howlcipher/howlframe.git /tmp/howlframe
+          cd /tmp/howlframe
+          go build -o $GITHUB_WORKSPACE/howlframe_bin howlframe.go
+          chmod +x $GITHUB_WORKSPACE/howlframe_bin
+
       - name: Run Backend Contract Tests
         run: |
           cd backend
@@ -32,3 +39,4 @@ jobs:
       - name: Verify SEO Metadata & Artifacts
         run: |
           python3 scripts/test_seo.py
+
