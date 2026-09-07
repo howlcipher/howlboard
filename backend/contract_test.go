@@ -83,7 +83,7 @@ func TestContracts(t *testing.T) {
 	}
 	cmd := exec.Command(
 		filepath.Join(repoRoot, "howlframe_bin"),
-		"-run-bc", "-allow-caps", "network,database", "server.hfbc",
+		"-run-bc", "-allow-caps", "network,database,filesystem", "server.hfbc",
 	)
 	cmd.Dir = filepath.Join(repoRoot, "backend")
 	cmd.Stdout = os.Stdout
