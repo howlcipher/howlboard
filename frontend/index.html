@@ -3,82 +3,97 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HowlBoard | App</title>
+    <title>HowlBoard | AI Engineering Mission Control</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <a class="skip-link" href="#missions">Skip to missions</a>
+
     <div class="container">
-        <header>
+        <header class="masthead">
             <div>
-                <p class="kicker">// full-stack howlframe dogfood / deterministic task state</p>
+                <p class="kicker">// howlframe reference application / governed autonomous work</p>
                 <h1>HowlBoard</h1>
+                <p class="subtitle">AI engineering mission control</p>
             </div>
-            <div>
-                <button id="theme-toggle">Toggle Theme</button>
+            <div class="masthead-actions">
+                <button id="seed-btn" type="button">Load demo missions</button>
+                <button id="refresh-btn" type="button">Refresh</button>
+                <button id="theme-toggle" type="button">Toggle theme</button>
             </div>
         </header>
 
-        <div id="error" class="error"></div>
+        <div id="error" class="error" role="alert" aria-live="assertive"></div>
 
-        <div class="filters">
-            <input type="text" id="filter-search" placeholder="Search tasks..." />
-            <select id="filter-status">
-                <option value="">All Statuses</option>
-                <option value="BACKLOG">BACKLOG</option>
-                <option value="READY">READY</option>
-                <option value="IN_PROGRESS">IN_PROGRESS</option>
-                <option value="BLOCKED">BLOCKED</option>
-                <option value="DONE">DONE</option>
-            </select>
-            <input type="text" id="filter-priority" placeholder="Priority (e.g. HIGH)" />
-            <input type="text" id="filter-labels" placeholder="Labels" />
-            <button id="filter-btn">Filter</button>
+        <main>
+        <section aria-labelledby="status-heading">
+            <h2 id="status-heading" class="section-heading">Ecosystem status</h2>
+            <div id="stats" class="stats"></div>
+        </section>
+
+        <section aria-labelledby="projects-heading">
+            <h2 id="projects-heading" class="section-heading">Workstreams</h2>
+            <div id="projects" class="projects"></div>
+        </section>
+
+        <div class="layout">
+            <section id="missions" class="panel" aria-labelledby="missions-heading">
+                <div class="panel-head">
+                    <h2 id="missions-heading">Missions</h2>
+                    <div class="filters">
+                        <label class="visually-hidden" for="filter-state">Filter by state</label>
+                        <select id="filter-state">
+                            <option value="">All states</option>
+                            <option value="CREATED">CREATED</option>
+                            <option value="ROUTED">ROUTED</option>
+                            <option value="EXECUTING">EXECUTING</option>
+                            <option value="AWAITING_APPROVAL">AWAITING_APPROVAL</option>
+                            <option value="VERIFYING">VERIFYING</option>
+                            <option value="REMEDIATING">REMEDIATING</option>
+                            <option value="BLOCKED">BLOCKED</option>
+                            <option value="COMPLETED">COMPLETED</option>
+                            <option value="FAILED">FAILED</option>
+                            <option value="CLOSED">CLOSED</option>
+                        </select>
+                        <label class="visually-hidden" for="filter-project">Filter by project</label>
+                        <select id="filter-project">
+                            <option value="">All workstreams</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="mission-list" class="mission-list" aria-live="polite"></div>
+            </section>
+
+            <section id="detail" class="panel detail" aria-labelledby="detail-heading" tabindex="-1">
+                <div class="panel-head">
+                    <h2 id="detail-heading">Mission detail</h2>
+                </div>
+                <div id="mission-detail" class="mission-detail">
+                    <p class="empty">Select a mission to trace it from evidence through to outcome.</p>
+                </div>
+            </section>
         </div>
 
-        <div class="controls">
-            <div class="controls-header">CREATE_TASK</div>
-            <div class="form-group">
-                <input type="text" id="new-task-title" placeholder="Task Title" />
-                <input type="text" id="new-task-priority" placeholder="Priority (e.g. HIGH)" />
-                <input type="text" id="new-task-labels" placeholder="Labels (comma separated)" />
+        <section class="panel" aria-labelledby="feed-heading">
+            <div class="panel-head">
+                <h2 id="feed-heading">Ecosystem activity</h2>
             </div>
-            <textarea id="new-task-desc" placeholder="Task Description" rows="2"></textarea>
-            <button id="add-btn">Submit Task</button>
-        </div>
+            <div id="feed" class="feed" aria-live="polite"></div>
+        </section>
 
-        <div class="board">
-            <div class="column" id="col-backlog">
-                <div class="column-header">BACKLOG</div>
-                <div id="tasks-backlog"></div>
-            </div>
-            <div class="column" id="col-ready">
-                <div class="column-header">READY</div>
-                <div id="tasks-ready"></div>
-            </div>
-            <div class="column" id="col-inprogress">
-                <div class="column-header">IN_PROGRESS</div>
-                <div id="tasks-inprogress"></div>
-            </div>
-            <div class="column" id="col-blocked">
-                <div class="column-header">BLOCKED</div>
-                <div id="tasks-blocked"></div>
-            </div>
-            <div class="column" id="col-done">
-                <div class="column-header">DONE</div>
-                <div id="tasks-done"></div>
-            </div>
-        </div>
+        </main>
 
-        <div class="activity-drawer" id="activity-drawer">
-            <h3>Activity History</h3>
-            <div id="activity-list"></div>
-        </div>
-
-        <footer>
-            <span><span class="status-dot"></span>STATUS: ACTIVE &mdash; HOWLBOARD://APP</span>
-            <button id="activity-btn" style="margin-left:auto;">Toggle Activity</button>
+        <footer class="colophon">
+            <p>
+                Backend compiled from <code>backend/server.howl</code> to standalone
+                HowlFrame bytecode; this interface compiled from
+                <code>frontend/app.howl</code> through the HowlFrame JavaScript backend.
+                Authority, evidence, verification and outcome vocabulary is reused from
+                HowlChangeOps, HowlPlane and HowlRelay.
+            </p>
         </footer>
     </div>
+
     <script src="app.js"></script>
 </body>
 </html>

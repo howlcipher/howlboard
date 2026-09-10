@@ -1,0 +1,281 @@
+; Projects HowlPlane control-plane evidence entries into HowlBoard missions.
+;
+;   ledger_import <ledger.jsonl> [max_entries]
+;
+; Input is the ai.evidence_entry/v1 JSONL format written by
+; howlplane/src/control_plane/evidence_ledger.py. The VM reads the whole file
+; into memory and every line costs instructions, so this consumes a slice
+; rather than a multi-gigabyte ledger:
+;
+;   head -n 5000 evidence_ledger.jsonl > slice.jsonl
+;
+; Records are written with provenance LEDGER, and any entry whose artifact path
+; shows it came from a pytest run is additionally marked origin=test_fixture.
+; A projected record is never presented as a production execution.
+
+(cli_app
+  ; The language has no substring predicate; splitting on the needle and
+  ; checking for more than one part is the available test.
+  (defun contains (haystack needle)
+    (type_hint return "bool")
+    (let (parts (str_split haystack needle))
+      (return (> (list_len parts) 1))
+    )
+  )
+
+  (defun state_for (action)
+    (let (out "")
+      (do
+        (if (= action "task_created") (set out "CREATED") (do))
+        (if (= action "project_discovered") (set out "CREATED") (do))
+        (if (= action "route_selected") (set out "ROUTED") (do))
+        (if (= action "implementation_started") (set out "EXECUTING") (do))
+        (if (= action "implementation_completed") (set out "EXECUTING") (do))
+        (if (= action "implementation_recovered") (set out "EXECUTING") (do))
+        (if (= action "review_started") (set out "EXECUTING") (do))
+        (if (= action "review_completed") (set out "EXECUTING") (do))
+        (if (= action "verification_started") (set out "VERIFYING") (do))
+        (if (= action "verification_completed") (set out "VERIFYING") (do))
+        (if (= action "remediation_started") (set out "REMEDIATING") (do))
+        (if (= action "remediation_completed") (set out "REMEDIATING") (do))
+        (if (= action "human_boundary_triggered") (set out "AWAITING_APPROVAL") (do))
+        (if (= action "human_decision_requested") (set out "AWAITING_APPROVAL") (do))
+        (if (= action "human_rejection") (set out "CLOSED") (do))
+        (if (= action "task_completed") (set out "COMPLETED") (do))
+        (if (= action "task_failed") (set out "FAILED") (do))
+        (if (= action "task_closed") (set out "CLOSED") (do))
+        (return out)
+      )
+    )
+  )
+
+  (let (path (cli_args 0))
+    (if (= path "")
+      (do
+        (stderr "usage: ledger_import <ledger.jsonl> [max_entries]")
+        (exit 2))
+      (let (limit_arg (cli_args 1))
+        (let (limit 2000)
+          (do
+            (if (= limit_arg "") (do) (set limit (to_int limit_arg)))
+            (try_let (raw (read_file path))
+              (catch err
+                (do
+                  (stderr "Failed to read ledger file")
+                  (exit 3)))
+              (let (text (bytes_to_string raw))
+                (let (lines (str_split text "\n"))
+                  (let (ids (list))
+                    (let (missions (dict))
+                      (let (events (list))
+                        (let (seen 0)
+                          (do
+                            (for line lines
+                              (if (> seen limit)
+                                (do)
+                                (if (= line "")
+                                  (do)
+                                  (try_let (entry (parse_json Any line))
+                                    (catch perr (do))
+                                    (let (task_id (to_string (map_get entry "task_id")))
+                                      (if (= task_id "")
+                                        (do)
+                                        (let (action (to_string (map_get entry "action")))
+                                          (let (agent (to_string (map_get entry "agent_id")))
+                                            (do
+                                              (set seen (+ seen 1))
+                                              (let (existing (map_get missions task_id))
+                                                (if (= (to_string existing) "")
+                                                  (do
+                                                    (append ids task_id)
+                                                    (map_set missions task_id (dict
+                                                      ("id" task_id)
+                                                      ("title" task_id)
+                                                      ("description" "Projected from the HowlPlane control-plane evidence ledger.")
+                                                      ("project" (to_string (map_get entry "repository")))
+                                                      ("priority" "NORMAL")
+                                                      ("risk_level" (to_string (map_get entry "risk_level")))
+                                                      ("task_class" (to_string (map_get entry "task_class")))
+                                                      ("state" "CREATED")
+                                                      ("executor" agent)
+                                                      ("recommended_executor" (to_string (map_get entry "recommended_agent")))
+                                                      ("is_override" (map_get entry "is_override"))
+                                                      ("override_reason" (to_string (map_get entry "override_reason")))
+                                                      ("outcome" "")
+                                                      ("provenance" "LEDGER")
+                                                      ("origin" "control_plane")
+                                                      ("created_at" 0)
+                                                      ("updated_at" 0)
+                                                      ("reasoning" (dict))
+                                                      ("authority" (dict ("decision" "REQUIRE_APPROVAL") ("gates" (list))))
+                                                      ("evidence" (list))
+                                                      ("plan" (list))
+                                                      ("execution" (dict))
+                                                      ("verification" (list))))
+                                                  )
+                                                  (do)
+                                                )
+                                              )
+                                              (let (m (map_get missions task_id))
+                                                (do
+                                                  ; A pytest-produced entry is labelled as such and never
+                                                  ; presented as a real execution.
+                                                  (let (artifact (to_string (map_get entry "artifact")))
+                                                    ; A "/tmp/pytest-of-.../" artifact path means the record
+                                                    ; was produced by a test run against a temporary fixture
+                                                    ; repository. A command that merely invokes pytest is a
+                                                    ; real verification step and is not marked.
+                                                    (if (call contains artifact "pytest-of-")
+                                                      (map_set m "origin" "test_fixture")
+                                                      (do)
+                                                    )
+                                                  )
+                                                  (let (next_state (call state_for action))
+                                                    (if (= next_state "") (do) (map_set m "state" next_state))
+                                                  )
+                                                  (if (= action "task_completed") (map_set m "outcome" "task_completed") (do))
+                                                  (if (= action "task_failed") (map_set m "outcome" "task_failed") (do))
+                                                  (if (= action "task_closed") (map_set m "outcome" "task_closed") (do))
+                                                  (if (= action "human_approval")
+                                                    (let (auth (map_get m "authority"))
+                                                      (do
+                                                        (map_set auth "decision" "ALLOW")
+                                                        (map_set auth "reason" "approval recorded in the evidence ledger")
+                                                        (map_set m "authority" auth)
+                                                      )
+                                                    )
+                                                    (do)
+                                                  )
+                                                  (if (= action "human_rejection")
+                                                    (let (auth (map_get m "authority"))
+                                                      (do
+                                                        (map_set auth "decision" "DENY")
+                                                        (map_set auth "reason" "rejection recorded in the evidence ledger")
+                                                        (map_set m "authority" auth)
+                                                      )
+                                                    )
+                                                    (do)
+                                                  )
+                                                  ; verification_summary preserves the ledger's own
+                                                  ; distinction between a verified and a merely claimed result.
+                                                  (let (vs (map_get entry "verification_summary"))
+                                                    (if (= (to_string vs) "")
+                                                      (do)
+                                                      (let (result (to_string (map_get entry "result")))
+                                                        ; A JSON null arrives at to_string as "<nil>"; recording that
+                                                        ; as a verification status would invent a result.
+                                                        (if (= result "<nil>")
+                                                          (do)
+                                                          (if (= result "")
+                                                            (do)
+                                                            (let (checks (map_get m "verification"))
+                                                              (do
+                                                                (append checks (dict
+                                                                  ("name" (str_join (list "control-plane verification (" action ")") ""))
+                                                                  ("status" result)
+                                                                  ("exit_code" 0)
+                                                                  ("output_digest" "")
+                                                                  ("started_at" 0)
+                                                                  ("finished_at" 0)))
+                                                                (map_set m "verification" checks)
+                                                              )
+                                                            )
+                                                          )
+                                                        )
+                                                      )
+                                                    )
+                                                  )
+                                                  (let (meta (map_get entry "metadata"))
+                                                    (if (= (to_string meta) "")
+                                                      (do)
+                                                      (let (added (map_get meta "files_added"))
+                                                        (if (= (to_string added) "")
+                                                          (do)
+                                                          (let (x (map_get m "execution"))
+                                                            (do
+                                                              (map_set x "delta" (dict
+                                                                ("files_added" added)
+                                                                ("files_modified" (map_get meta "files_modified"))
+                                                                ("files_deleted" (map_get meta "files_deleted"))
+                                                                ("insertions" (map_get meta "insertions"))
+                                                                ("deletions" (map_get meta "deletions"))
+                                                                ("unexpected" (list))))
+                                                              (map_set m "execution" x)
+                                                            )
+                                                          )
+                                                        )
+                                                      )
+                                                    )
+                                                  )
+                                                  (let (artifact2 (to_string (map_get entry "artifact")))
+                                                    (if (= artifact2 "")
+                                                      (do)
+                                                      (let (ev (map_get m "evidence"))
+                                                        (let (total (map_get m "evidence_total"))
+                                                          (do
+                                                            (if (= (to_string total) "") (set total 0) (do))
+                                                            (set total (+ total 1))
+                                                            (map_set m "evidence_total" total)
+                                                            ; A single ledger task can carry hundreds of artifacts.
+                                                            ; Retain a bounded head and keep the true count visible
+                                                            ; so the trim is never silent.
+                                                            (if (< (list_len ev) 25)
+                                                              (do
+                                                                (append ev (dict
+                                                                  ("type" "custom")
+                                                                  ("ref" artifact2)
+                                                                  ("source" "howlplane control plane")
+                                                                  ("description" (str_join (list "Artifact recorded at " action) ""))
+                                                                  ("fingerprint" (to_string (map_get entry "entry_id")))
+                                                                  ("collected_at" 0)))
+                                                                (map_set m "evidence" ev)
+                                                              )
+                                                              (do)
+                                                            )
+                                                          )
+                                                        )
+                                                      )
+                                                    )
+                                                  )
+                                                  (map_set missions task_id m)
+                                                )
+                                              )
+                                              (append events (dict
+                                                ("mission_id" task_id)
+                                                ("action" action)
+                                                ("actor" agent)
+                                                ("detail" (to_string (map_get entry "result")))
+                                                ("timestamp" 0)))
+                                            )
+                                          )
+                                        )
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+
+                            (store_open kv "file://howlboard_missions.json")
+                            (for id ids
+                              (store_put kv (str_join (list "mission:" id) "") (map_get missions id))
+                            )
+                            (store_open tl "file://howlboard_timeline.json")
+                            (store_put tl "feed" (dict ("events" events)))
+
+                            (print (str_join (list "entries=" (to_string seen)) ""))
+                            (print (str_join (list "missions=" (to_string (list_len ids))) ""))
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+)

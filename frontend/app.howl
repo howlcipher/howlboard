@@ -1,48 +1,133 @@
+; HowlBoard mission control interface.
+;
+; Compiled through the HowlFrame JavaScript backend to frontend/app.js. Every
+; stage of the mission detail view is its own dict-consuming defun, which the
+; language only permits because dict parameters and dict returns are annotated
+; with type_hint; before that the whole view had to be one expression.
+
 (web_app
-  (defun render_task_card (task)
-    (type_hint task "dict")
-    (let (id (to_string (map_get task "id")))
-      (let (title (to_string (map_get task "title")))
-        (let (desc (to_string (map_get task "description")))
-          (let (prio (to_string (map_get task "priority")))
-            (let (labels (to_string (map_get task "labels")))
-              (let (status (to_string (map_get task "status")))
-                (let (html "")
-                  (do
-                    (set html (str_join (list "<div class=\"task-card\" id=\"task-" id "\">") ""))
-                    (set html (str_join (list html "<div class=\"task-id\">ID_" id "</div>") ""))
-                    (set html (str_join (list html "<div class=\"task-title\">" title "</div>") ""))
-                    (set html (str_join (list html "<div class=\"task-desc\">" desc "</div>") ""))
-                    (set html (str_join (list html "<div class=\"task-meta\"><span>P: " prio "</span><span>L: " labels "</span></div>") ""))
-                    (set html (str_join (list html "<div class=\"task-actions\">") ""))
-                    (if (= status "BACKLOG")
-                      (set html (str_join (list html "<button onclick=\"window.change_status('" id "', 'READY')\">-> READY</button>") ""))
-                      (do)
+
+  (use "mission_view.howl" as view)
+
+  (defun api_url (path)
+    (return (str_join (list "http://localhost:8080" path) ""))
+  )
+
+  ; No HTML-escaping primitive exists, so escaping is built from str_split and
+  ; str_join. The ampersand pass must run first or the later passes double-encode.
+
+
+
+
+
+
+
+
+  ; ------------------------------------------------------------ stat header
+
+  (defun render_stats (d)
+    (type_hint d "dict")
+    (let (counts (map_get d "counts"))
+      (let (html "")
+        (do
+          (set html (str_join (list html
+            "<div class=\"stat\"><span class=\"value\">" (to_string (map_get d "total"))
+            "</span><span class=\"label\">Missions tracked</span></div>") ""))
+          (set html (str_join (list html
+            "<div class=\"stat live\"><span class=\"value\">" (to_string (map_get counts "EXECUTING"))
+            "</span><span class=\"label\">Executing</span></div>") ""))
+          (set html (str_join (list html
+            "<div class=\"stat warn\"><span class=\"value\">" (to_string (map_get counts "AWAITING_APPROVAL"))
+            "</span><span class=\"label\">Awaiting approval</span></div>") ""))
+          (set html (str_join (list html
+            "<div class=\"stat\"><span class=\"value\">" (to_string (map_get counts "BLOCKED"))
+            "</span><span class=\"label\">Blocked</span></div>") ""))
+          (set html (str_join (list html
+            "<div class=\"stat alert\"><span class=\"value\">" (to_string (map_get d "verification_failures"))
+            "</span><span class=\"label\">Verification failures</span></div>") ""))
+          (set html (str_join (list html
+            "<div class=\"stat alert\"><span class=\"value\">" (to_string (map_get d "expired_authority"))
+            "</span><span class=\"label\">Expired authority</span></div>") ""))
+          (set html (str_join (list html
+            "<div class=\"stat\"><span class=\"value\">" (to_string (map_get counts "COMPLETED"))
+            "</span><span class=\"label\">Completed</span></div>") ""))
+          (return html)
+        )
+      )
+    )
+  )
+
+  ; --------------------------------------------------------- mission list
+
+
+
+  ; ------------------------------------------------- mission detail spine
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  ; A "claimed" result is an assertion the agent made that nothing independently
+  ; confirmed. It is rendered as its own status, never folded into "passed".
+
+
+
+
+
+
+
+
+  ; ------------------------------------------------------------- data loads
+
+  (defun show_error (msg)
+    (type_hint return "void")
+    (set_text (dom_query "#error") msg)
+  )
+
+  (defun load_dashboard ()
+    (type_hint return "void")
+    (try_let (raw (fetch (call api_url "/api/dashboard") "GET"))
+      (catch err (call show_error "Cannot reach the mission API on port 8080."))
+      (try_let (d (parse_json Any raw))
+        (catch perr (call show_error "Dashboard response was not valid JSON."))
+        (set_html (dom_query "#stats") (call render_stats d))
+      )
+    )
+  )
+
+  (defun load_projects ()
+    (type_hint return "void")
+    (try_let (raw (fetch (call api_url "/api/projects") "GET"))
+      (catch err (do))
+      (try_let (d (parse_json Any raw))
+        (catch perr (do))
+        (let (projects (map_get d "projects"))
+          (let (html "")
+            (let (options "<option value=\"\">All workstreams</option>")
+              (do
+                (for row projects
+                  (let (name (to_string (map_get row "name")))
+                    (do
+                      (set html (str_join (list html
+                        "<span class=\"project-chip\">" (call view/esc name)
+                        "<span class=\"count\">" (to_string (map_get row "count")) "</span></span>") ""))
+                      (set options (str_join (list options
+                        "<option value=\"" (call view/esc name) "\">" (call view/esc name) "</option>") ""))
                     )
-                    (if (= status "READY")
-                      (set html (str_join (list html "<button onclick=\"window.change_status('" id "', 'IN_PROGRESS')\">-> IN_PROGRESS</button>") ""))
-                      (do)
-                    )
-                    (if (= status "IN_PROGRESS")
-                      (do
-                        (set html (str_join (list html "<button onclick=\"window.change_status('" id "', 'BLOCKED')\">-> BLOCKED</button>") ""))
-                        (set html (str_join (list html "<button onclick=\"window.change_status('" id "', 'DONE')\">-> DONE</button>") ""))
-                      )
-                      (do)
-                    )
-                    (if (= status "BLOCKED")
-                      (set html (str_join (list html "<button onclick=\"window.change_status('" id "', 'IN_PROGRESS')\">-> IN_PROGRESS</button>") ""))
-                      (do)
-                    )
-                    (if (= status "DONE")
-                      (set html (str_join (list html "<button onclick=\"window.change_status('" id "', 'IN_PROGRESS')\">-> REOPEN</button>") ""))
-                      (do)
-                    )
-                    (set html (str_join (list html "<button onclick=\"window.delete_task('" id "')\">DELETE</button>") ""))
-                    (set html (str_join (list html "</div></div>") ""))
-                    (return html)
                   )
                 )
+                (set_html (dom_query "#projects") html)
+                (set_html (dom_query "#filter-project") options)
               )
             )
           )
@@ -51,124 +136,43 @@
     )
   )
 
-  (defun load_tasks ()
-    (try_let (resp (fetch "http://localhost:8080/api/tasks" "GET"))
-      (catch err
-        (set_text (dom_query "#error") "Failed to load tasks")
-      )
-      (try_let (json_resp (parse_json TaskList resp))
-        (catch parse_err
-          (set_text (dom_query "#error") "Invalid JSON response")
-        )
-        (let (tasks (map_get json_resp "tasks"))
-          (let (backlog_html "")
-            (let (ready_html "")
-              (let (inprogress_html "")
-                (let (blocked_html "")
-                  (let (done_html "")
-                    (let (f_search (dom_value (dom_query "#filter-search")))
-                      (let (f_status (dom_value (dom_query "#filter-status")))
-                        (let (f_prio (dom_value (dom_query "#filter-priority")))
-                          (let (f_labels (dom_value (dom_query "#filter-labels")))
-                            (do
-                              (for task tasks
-                                (let (status (to_string (map_get task "status")))
-                                  (let (title (to_string (map_get task "title")))
-                                    (let (prio (to_string (map_get task "priority")))
-                                      (let (labels (to_string (map_get task "labels")))
-                                        (let (match true)
-                                          (do
-                                            (if (and (!= f_search "") (= (regex_match f_search title) false)) (set match false) (do))
-                                            (if (and (!= f_status "") (!= f_status status)) (set match false) (do))
-                                            (if (and (!= f_prio "") (!= f_prio prio)) (set match false) (do))
-                                            (if (and (!= f_labels "") (= (regex_match f_labels labels) false)) (set match false) (do))
-                                            (if match
-                                              (let (card (call render_task_card task))
-                                                (do
-                                                  (if (= status "BACKLOG") (set backlog_html (str_join (list backlog_html card) "")) (do))
-                                                  (if (= status "READY") (set ready_html (str_join (list ready_html card) "")) (do))
-                                                  (if (= status "IN_PROGRESS") (set inprogress_html (str_join (list inprogress_html card) "")) (do))
-                                                  (if (= status "BLOCKED") (set blocked_html (str_join (list blocked_html card) "")) (do))
-                                                  (if (= status "DONE") (set done_html (str_join (list done_html card) "")) (do))
-                                                )
-                                              )
-                                              (do)
-                                            )
-                                          )
-                                        )
-                                      )
-                                    )
-                                  )
-                                )
-                              )
-                              (set_html (dom_query "#tasks-backlog") backlog_html)
-                              (set_html (dom_query "#tasks-ready") ready_html)
-                              (set_html (dom_query "#tasks-inprogress") inprogress_html)
-                              (set_html (dom_query "#tasks-blocked") blocked_html)
-                              (set_html (dom_query "#tasks-done") done_html)
-                              (set_text (dom_query "#error") "")
-                            )
+  (defun load_missions ()
+    (type_hint return "void")
+    (try_let (raw (fetch (call api_url "/api/missions") "GET"))
+      (catch err (call show_error "Cannot reach the mission API on port 8080."))
+      (try_let (d (parse_json Any raw))
+        (catch perr (call show_error "Mission list response was not valid JSON."))
+        (let (want_state (dom_value (dom_query "#filter-state")))
+          (let (want_project (dom_value (dom_query "#filter-project")))
+            (let (html "")
+              (let (shown 0)
+                (do
+                  (call show_error "")
+                  (for m (map_get d "missions")
+                    (let (keep true)
+                      (do
+                        (if (= want_state "")
+                          (do)
+                          (if (= (to_string (map_get m "state")) want_state) (do) (set keep false))
+                        )
+                        (if (= want_project "")
+                          (do)
+                          (if (= (to_string (map_get m "project")) want_project) (do) (set keep false))
+                        )
+                        (if keep
+                          (do
+                            (set html (str_join (list html (call view/render_row m)) ""))
+                            (set shown (+ shown 1))
                           )
+                          (do)
                         )
                       )
                     )
                   )
-                )
-              )
-            )
-          )
-        )
-      )
-    )
-  )
-
-  (defun load_activity ()
-    (try_let (resp (fetch "http://localhost:8080/api/activity" "GET"))
-      (catch err
-        (set_text (dom_query "#error") "Failed to load activity")
-      )
-      (try_let (json_resp (parse_json ActivityList resp))
-        (catch parse_err
-          (set_text (dom_query "#error") "Invalid JSON response for activity")
-        )
-        (let (activities (map_get json_resp "activities"))
-          (let (html "")
-            (do
-              (for act activities
-                (let (task_id (to_string (map_get act "task_id")))
-                  (let (from (to_string (map_get act "from")))
-                    (let (to (to_string (map_get act "to")))
-                      (let (ts (to_string (map_get act "timestamp")))
-                        (set html (str_join (list html "<div class=\"activity-item\">[" ts "] Task #" task_id ": " from " -> " to "</div>") ""))
-                      )
-                    )
-                  )
-                )
-              )
-              (set_html (dom_query "#activity-list") html)
-            )
-          )
-        )
-      )
-    )
-  )
-
-  (defun add_task ()
-    (let (title (dom_value (dom_query "#new-task-title")))
-      (let (desc (dom_value (dom_query "#new-task-desc")))
-        (let (prio (dom_value (dom_query "#new-task-priority")))
-          (let (labels (dom_value (dom_query "#new-task-labels")))
-            (if (= title "")
-              (set_text (dom_query "#error") "Title cannot be empty")
-              (let (req_body (str_join (list "{\"title\":\"" title "\",\"description\":\"" desc "\",\"priority\":\"" prio "\",\"labels\":\"" labels "\"}") ""))
-                (try_let (resp (fetch "http://localhost:8080/api/tasks/create" "POST" req_body))
-                  (catch err
-                    (set_text (dom_query "#error") "Failed to add task")
-                  )
-                  (do
-                    (set_text (dom_query "#error") "")
-                    (call load_tasks)
-                    (call load_activity)
+                  (if (= shown 0)
+                    (set_html (dom_query "#mission-list")
+                      "<p class=\"empty\">No missions match. Load the demo missions to populate the board.</p>")
+                    (set_html (dom_query "#mission-list") html)
                   )
                 )
               )
@@ -179,65 +183,130 @@
     )
   )
 
-  (defun change_status (id new_status)
-    (type_hint id "string")
-    (type_hint new_status "string")
-    (let (req_body (str_join (list "{\"id\":\"" id "\",\"status\":\"" new_status "\"}") ""))
-      (try_let (resp (fetch "http://localhost:8080/api/tasks/status" "POST" req_body))
-        (catch err
-          (set_text (dom_query "#error") "Failed to change status")
+  (defun load_feed ()
+    (type_hint return "void")
+    (try_let (raw (fetch (call api_url "/api/timeline") "GET"))
+      (catch err (do))
+      (try_let (d (parse_json Any raw))
+        (catch perr (do))
+        (let (html "<div class=\"timeline\">")
+          (do
+            (for e (map_get d "events")
+              (set html (str_join (list html
+                "<div class=\"timeline-row\"><span class=\"at\">" (call view/ago (map_get e "timestamp"))
+                "</span><span><span class=\"what\">" (call view/esc (map_get e "action"))
+                "</span><span class=\"who\"> " (call view/esc (map_get e "actor"))
+                " &middot; " (call view/esc (map_get e "mission_id")) "</span></span></div>") ""))
+            )
+            (set_html (dom_query "#feed") (str_join (list html "</div>") ""))
+          )
         )
+      )
+    )
+  )
+
+  (defun open_mission (id)
+    (type_hint return "void")
+    (try_let (raw (fetch (call api_url "/api/missions/get") "POST" (str_join (list "{\"id\":\"" id "\"}") "")))
+      (catch err (call show_error "Cannot load that mission."))
+      (try_let (m (parse_json Any raw))
+        (catch perr (call show_error "Mission response was not valid JSON."))
         (do
-          (set_text (dom_query "#error") "")
-          (call load_tasks)
-          (call load_activity)
+          (let (html (call view/render_detail m))
+          (do
+            (let (id (call view/esc (map_get m "id")))
+              (set html (str_join (list html
+                "<div class=\"stage\"><div class=\"actions\">"
+                "<button type=\"button\" onclick=\"window.approve_mission('" id "')\">Grant approval</button>"
+                "<button type=\"button\" onclick=\"window.reject_mission('" id "')\">Reject</button>"
+                "<button type=\"button\" onclick=\"window.advance_mission('" id "')\">Advance to EXECUTING</button>"
+                "</div></div>") ""))
+            )
+            (set_html (dom_query "#mission-detail") html)
+          )
+        )
+          (set_text (dom_query "#detail-heading") (str_join (list "Mission detail / " id) ""))
         )
       )
     )
   )
 
-  (defun delete_task (id)
-    (type_hint id "string")
-    (let (req_body (str_join (list "{\"id\":\"" id "\"}") ""))
-      (try_let (resp (fetch "http://localhost:8080/api/tasks/delete" "POST" req_body))
-        (catch err
-          (set_text (dom_query "#error") "Failed to delete task")
-        )
-        (do
-          (set_text (dom_query "#error") "")
-          (call load_tasks)
-          (call load_activity)
-        )
-      )
+  (defun refresh_all ()
+    (type_hint return "void")
+    (do
+      (call load_dashboard)
+      (call load_projects)
+      (call load_missions)
+      (call load_feed)
     )
   )
 
-  (on_event (dom_query "#add-btn") "click" (lambda (e)
-    (call add_task)
-  ))
-
-  (on_event (dom_query "#filter-btn") "click" (lambda (e)
-    (call load_tasks)
-  ))
-
-  (on_event (dom_query "#activity-btn") "click" (lambda (e)
-    (let (drawer (dom_query "#activity-drawer"))
+  (defun approve_mission (id)
+    (type_hint return "void")
+    (try_let (raw (fetch (call api_url "/api/missions/approve") "POST"
+        (str_join (list "{\"id\":\"" id "\",\"approver\":\"human_operator\",\"ttl_seconds\":3600}") "")))
+      (catch err (call show_error "Approval request failed."))
       (do
-        (call load_activity)
-        (toggle_class drawer "visible")
+        (call refresh_all)
+        (call open_mission id)
       )
     )
-  ))
+  )
 
-  (on_event (dom_query "#theme-toggle") "click" (lambda (e)
-    (let (body (dom_query "body"))
-      (toggle_class body "light-mode")
+  (defun reject_mission (id)
+    (type_hint return "void")
+    (try_let (raw (fetch (call api_url "/api/missions/reject") "POST"
+        (str_join (list "{\"id\":\"" id "\",\"approver\":\"human_operator\",\"reason\":\"rejected from mission control\"}") "")))
+      (catch err (call show_error "Rejection request failed."))
+      (do
+        (call refresh_all)
+        (call open_mission id)
+      )
     )
-  ))
+  )
 
-  (export "change_status" change_status)
-  (export "delete_task" delete_task)
+  (defun advance_mission (id)
+    (type_hint return "void")
+    (try_let (raw (fetch (call api_url "/api/missions/state") "POST"
+        (str_join (list "{\"id\":\"" id "\",\"state\":\"EXECUTING\"}") "")))
+      (catch err (call show_error "State change failed."))
+      (try_let (d (parse_json Any raw))
+        (catch perr (call show_error "State response was not valid JSON."))
+        (do
+          (let (e (to_string (map_get d "error")))
+            (if (= e "")
+              (call show_error "")
+              (call show_error (str_join (list e " - " (to_string (map_get d "envelope_status"))) ""))
+            )
+          )
+          (call refresh_all)
+          (call open_mission id)
+        )
+      )
+    )
+  )
 
-  (call load_tasks)
-  (call load_activity)
+  (defun seed_board ()
+    (type_hint return "void")
+    (try_let (raw (fetch (call api_url "/api/seed") "POST" "{}"))
+      (catch err (call show_error "Could not load demo missions."))
+      (call refresh_all)
+    )
+  )
+
+  ; ----------------------------------------------------------------- wiring
+
+  (on_event (dom_query "#seed-btn") "click" (lambda (e) (call seed_board)))
+  (on_event (dom_query "#refresh-btn") "click" (lambda (e) (call refresh_all)))
+  (on_event (dom_query "#filter-state") "change" (lambda (e) (call load_missions)))
+  (on_event (dom_query "#filter-project") "change" (lambda (e) (call load_missions)))
+  (on_event (dom_query "#theme-toggle") "click" (lambda (e)
+    (toggle_class (dom_query "body") "light-mode")))
+
+  (export "open_mission" open_mission)
+  (export "approve_mission" approve_mission)
+  (export "reject_mission" reject_mission)
+  (export "advance_mission" advance_mission)
+
+  (call refresh_all)
 )

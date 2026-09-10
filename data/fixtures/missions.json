@@ -1,0 +1,1085 @@
+{
+  "schema": "howlboard.fixtures/v1",
+  "note": "Demo fixtures. Every mission carries provenance DEMO. These describe plausible Howl ecosystem work; they are not records of real executions.",
+  "generated_at": 1789045652,
+  "missions": [
+    {
+      "id": "HF-412",
+      "title": "Reject unknown opcodes in bytecode UnmarshalJSON",
+      "description": "Malformed .hfbc payloads decoded into an opcode value with no registry entry, so a corrupt artifact reached the VM dispatch loop instead of being refused at parse time.",
+      "project": "HowlFrame",
+      "priority": "HIGH",
+      "risk_level": "MEDIUM",
+      "task_class": "bug_fix",
+      "state": "COMPLETED",
+      "executor": "claude_code",
+      "recommended_executor": "claude_code",
+      "is_override": false,
+      "outcome": "task_completed",
+      "provenance": "DEMO",
+      "created_at": 1788786452,
+      "updated_at": 1788793652,
+      "reasoning": {
+        "problem": "bytecode.UnmarshalJSON accepted any integer as an opcode, so a truncated or hand-edited .hfbc reached the VM and failed deep in dispatch with an opaque VM_INTERNAL error.",
+        "observations": [
+          "Registry lookup happens at dispatch, not at decode.",
+          "A fuzzed artifact with opcode 9999 produced VM_INTERNAL with no source location.",
+          "internal/bytecode/bytecode.go had no validation in the UnmarshalJSON path."
+        ],
+        "assumptions": [
+          "Every legitimate opcode is present in bytecode.Registry at decode time.",
+          "No caller depends on decoding a forward-compatible unknown opcode."
+        ],
+        "options": [
+          {
+            "option": "Validate at decode and reject unknown opcodes",
+            "assessment": "Fails closed at the trust boundary; smallest change."
+          },
+          {
+            "option": "Validate lazily at dispatch with a better error",
+            "assessment": "Keeps a corrupt program alive until execution; rejected."
+          },
+          {
+            "option": "Version the bytecode format and skip unknown opcodes",
+            "assessment": "Forward compatibility is not a current requirement; adds surface area."
+          }
+        ],
+        "selected": "Validate at decode and reject unknown opcodes",
+        "rationale": "The artifact boundary is where a malformed program should be refused. Rejecting at decode keeps the failure close to its cause and preserves the fail-closed contract.",
+        "confidence": "high",
+        "decided_by": "claude_code"
+      },
+      "authority": {
+        "decision": "ALLOW",
+        "reason": "bug_fix in an authorized repository, within delegated action classes",
+        "digest": "sha256:9f2b41c8e07a",
+        "gates": [
+          {
+            "name": "repository_authorized",
+            "status": "PASS"
+          },
+          {
+            "name": "action_class_allowed",
+            "status": "PASS"
+          },
+          {
+            "name": "risk_below_threshold",
+            "status": "PASS"
+          }
+        ]
+      },
+      "evidence": [
+        {
+          "type": "git_commit",
+          "ref": "a8a45f2",
+          "source": "howlcipher/howlframe",
+          "description": "fix(bytecode): reject unknown opcodes in UnmarshalJSON (bug #56)",
+          "fingerprint": "sha256:a8a45f2c19bd",
+          "collected_at": 1788791852
+        },
+        {
+          "type": "test_run",
+          "ref": "go test ./internal/bytecode/",
+          "source": "local toolchain",
+          "description": "Decode of an unknown opcode returns an error instead of a usable program",
+          "fingerprint": "sha256:31c7de90ab44",
+          "collected_at": 1788792152
+        },
+        {
+          "type": "decision_record",
+          "ref": "bugs.md#56",
+          "source": "howlframe/bugs.md",
+          "description": "Bug #56 report and reproduction steps",
+          "fingerprint": "sha256:77aa20f1cc83",
+          "collected_at": 1788787052
+        }
+      ],
+      "plan": [
+        {
+          "action": "Reproduce with a fuzzed .hfbc artifact",
+          "owner": "claude_code",
+          "priority": "IMMEDIATE",
+          "command": "go test ./internal/bytecode/ -run TestUnmarshalUnknownOpcode",
+          "state": "complete"
+        },
+        {
+          "action": "Validate opcode against bytecode.Registry during decode",
+          "owner": "claude_code",
+          "priority": "IMMEDIATE",
+          "command": "",
+          "state": "complete"
+        },
+        {
+          "action": "Add regression coverage for the rejection path",
+          "owner": "claude_code",
+          "priority": "NEXT",
+          "command": "go test ./internal/bytecode/",
+          "state": "complete"
+        },
+        {
+          "action": "Run the full regression gate",
+          "owner": "control_plane",
+          "priority": "NEXT",
+          "command": "go test ./...",
+          "state": "complete"
+        }
+      ],
+      "execution": {
+        "executor": "claude_code",
+        "started_at": 1788787652,
+        "ended_at": 1788792452,
+        "current_operation": "",
+        "retries": 0,
+        "recovery_actions": [],
+        "receipt": {
+          "executed_at": 1788792452,
+          "verification": "passed",
+          "rollback_status": "",
+          "error_message": ""
+        },
+        "delta": {
+          "files_added": [],
+          "files_modified": [
+            "internal/bytecode/bytecode.go",
+            "internal/bytecode/bytecode_test.go"
+          ],
+          "files_deleted": [],
+          "insertions": 34,
+          "deletions": 2,
+          "unexpected": []
+        }
+      },
+      "verification": [
+        {
+          "name": "Unit tests (go test ./internal/bytecode/)",
+          "status": "passed",
+          "exit_code": 0,
+          "output_digest": "sha256:5d81ba0e7742",
+          "started_at": 1788792212,
+          "finished_at": 1788792272
+        },
+        {
+          "name": "Full regression (go test ./...)",
+          "status": "passed",
+          "exit_code": 0,
+          "output_digest": "sha256:e0397fb1a55c",
+          "started_at": 1788792272,
+          "finished_at": 1788792392
+        },
+        {
+          "name": "go vet ./...",
+          "status": "passed",
+          "exit_code": 0,
+          "output_digest": "sha256:bb14c7d0e8a1",
+          "started_at": 1788792392,
+          "finished_at": 1788792452
+        }
+      ]
+    },
+    {
+      "id": "CO-118",
+      "title": "Widen approval TTL for long-running release windows",
+      "description": "Release approvals expire after one hour, which is shorter than a staged production rollout. Operators re-approve mid-rollout, which defeats the point of a bound approval.",
+      "project": "HowlChangeOps",
+      "priority": "NORMAL",
+      "risk_level": "HIGH",
+      "task_class": "policy_change",
+      "state": "AWAITING_APPROVAL",
+      "executor": "",
+      "recommended_executor": "codex",
+      "is_override": false,
+      "outcome": "",
+      "provenance": "DEMO",
+      "created_at": 1789024052,
+      "updated_at": 1789043252,
+      "reasoning": {
+        "problem": "Approval.expires_at is fixed at one hour. A staged production rollout routinely exceeds that, so operators re-approve mid-flight and the approval stops being a meaningful bound.",
+        "observations": [
+          "Approval carries issued_at, expires_at, and a nonce, but no configurable TTL.",
+          "Three of the last five production rollouts required a second approval.",
+          "Re-approval reuses the same decision digest, so it is indistinguishable from the first."
+        ],
+        "assumptions": [
+          "Longer TTLs remain acceptable only when scoped to a single decision digest."
+        ],
+        "options": [
+          {
+            "option": "Make TTL a per-action-class policy value",
+            "assessment": "Scoped and auditable; needs human sign-off because it widens an authority bound."
+          },
+          {
+            "option": "Raise the global TTL to six hours",
+            "assessment": "Simple, but widens authority for every action class indiscriminately."
+          },
+          {
+            "option": "Allow unlimited re-approval",
+            "assessment": "Removes the bound entirely; rejected."
+          }
+        ],
+        "selected": "Make TTL a per-action-class policy value",
+        "rationale": "Widening an authority boundary is exactly the class of change that must not be autonomous. The narrow option is proposed and held for a human.",
+        "confidence": "medium",
+        "decided_by": "codex"
+      },
+      "authority": {
+        "decision": "REQUIRE_APPROVAL",
+        "reason": "change widens an authority boundary; human sign-off required",
+        "digest": "sha256:c41d780be92f",
+        "gates": [
+          {
+            "name": "repository_authorized",
+            "status": "PASS"
+          },
+          {
+            "name": "action_class_allowed",
+            "status": "PASS"
+          },
+          {
+            "name": "risk_below_threshold",
+            "status": "FAIL"
+          },
+          {
+            "name": "human_sign_off",
+            "status": "PENDING"
+          }
+        ]
+      },
+      "evidence": [
+        {
+          "type": "git_branch",
+          "ref": "proposal/ttl-per-action-class",
+          "source": "howlcipher/howlchangeops",
+          "description": "Proposed policy change, not merged",
+          "fingerprint": "sha256:2ae901bb37d4",
+          "collected_at": 1789027652
+        },
+        {
+          "type": "continuity_doc",
+          "ref": "docs/authority_model.md",
+          "source": "howlchangeops",
+          "description": "Current approval lifetime and its rationale",
+          "fingerprint": "sha256:6f30c8ae2b19",
+          "collected_at": 1789027652
+        },
+        {
+          "type": "custom",
+          "ref": "rollout-audit-2026-09",
+          "source": "operator notes",
+          "description": "3 of 5 recent production rollouts required mid-flight re-approval",
+          "fingerprint": "sha256:90bd4417ce55",
+          "collected_at": 1789027652
+        }
+      ],
+      "plan": [
+        {
+          "action": "Draft the per-action-class TTL policy schema",
+          "owner": "codex",
+          "priority": "IMMEDIATE",
+          "command": "",
+          "state": "complete"
+        },
+        {
+          "action": "Obtain human approval to widen the authority bound",
+          "owner": "human_operator",
+          "priority": "IMMEDIATE",
+          "command": "",
+          "state": "active"
+        },
+        {
+          "action": "Implement the policy field and validation",
+          "owner": "codex",
+          "priority": "NEXT",
+          "command": "",
+          "state": "pending"
+        },
+        {
+          "action": "Add expiry regression coverage",
+          "owner": "codex",
+          "priority": "NEXT",
+          "command": "go test ./adapter/",
+          "state": "pending"
+        }
+      ],
+      "execution": {
+        "executor": "",
+        "started_at": 0,
+        "ended_at": 0,
+        "current_operation": "held at human authority boundary",
+        "retries": 0,
+        "recovery_actions": [],
+        "receipt": {
+          "executed_at": 0,
+          "verification": "",
+          "rollback_status": "",
+          "error_message": ""
+        },
+        "delta": {
+          "files_added": [],
+          "files_modified": [],
+          "files_deleted": [],
+          "insertions": 0,
+          "deletions": 0,
+          "unexpected": []
+        }
+      },
+      "verification": []
+    },
+    {
+      "id": "HP-207",
+      "title": "Restore provider failover after local runtime timeout",
+      "description": "When the local Ollama runtime stops responding, the control plane retried the same provider instead of failing over, stalling the queue until manual intervention.",
+      "project": "HowlPlane",
+      "priority": "HIGH",
+      "risk_level": "HIGH",
+      "task_class": "bug_fix",
+      "state": "COMPLETED",
+      "executor": "agy",
+      "recommended_executor": "claude_code",
+      "is_override": true,
+      "override_reason": "claude_code at concurrency limit; agy holds equivalent tier_1 authority",
+      "outcome": "task_completed",
+      "provenance": "DEMO",
+      "created_at": 1788872852,
+      "updated_at": 1788890852,
+      "reasoning": {
+        "problem": "A stalled local runtime was retried indefinitely rather than triggering failover, so the task queue stopped draining.",
+        "observations": [
+          "implementation_failover appears in the ledger only for hard process exits, never for timeouts.",
+          "The timeout path returned a retryable error indistinguishable from a transient failure.",
+          "Queue depth grew monotonically for 40 minutes before an operator intervened."
+        ],
+        "assumptions": [
+          "A timeout of this duration indicates an unhealthy provider, not transient slowness."
+        ],
+        "options": [
+          {
+            "option": "Classify runtime timeout as a failover trigger",
+            "assessment": "Directly addresses the observed path."
+          },
+          {
+            "option": "Cap retry attempts and surface a hard failure",
+            "assessment": "Stops the stall but leaves work unrouted."
+          },
+          {
+            "option": "Add a provider health probe before dispatch",
+            "assessment": "Useful, but does not fix an in-flight stall."
+          }
+        ],
+        "selected": "Classify runtime timeout as a failover trigger",
+        "rationale": "The stall is caused by misclassification, not by retry policy. Correcting the classification fixes the observed failure and leaves retry semantics intact.",
+        "confidence": "high",
+        "decided_by": "agy"
+      },
+      "authority": {
+        "decision": "ALLOW",
+        "reason": "bug_fix within delegated action classes",
+        "digest": "sha256:71fe0a934c26",
+        "gates": [
+          {
+            "name": "repository_authorized",
+            "status": "PASS"
+          },
+          {
+            "name": "action_class_allowed",
+            "status": "PASS"
+          },
+          {
+            "name": "risk_below_threshold",
+            "status": "PASS"
+          }
+        ]
+      },
+      "evidence": [
+        {
+          "type": "test_run",
+          "ref": "pytest tests/test_provider_recovery.py",
+          "source": "local toolchain",
+          "description": "First run: 2 failures in failover classification",
+          "fingerprint": "sha256:4b2ce8071afd",
+          "collected_at": 1788880052
+        },
+        {
+          "type": "git_diff",
+          "ref": "HP-207.patch",
+          "source": "howlcipher/howlplane",
+          "description": "Timeout classified as a failover trigger",
+          "fingerprint": "sha256:ac7719e034b8",
+          "collected_at": 1788883652
+        },
+        {
+          "type": "git_commit",
+          "ref": "d19f4c2",
+          "source": "howlcipher/howlplane",
+          "description": "fix(control_plane): treat runtime timeout as failover trigger",
+          "fingerprint": "sha256:d19f4c2ba806",
+          "collected_at": 1788887252
+        },
+        {
+          "type": "howlframe_policy",
+          "ref": "authority_profile.tier_1",
+          "source": "howlplane",
+          "description": "Profile permitting agy to implement tier_1 bug fixes",
+          "fingerprint": "sha256:5502ec7a1db3",
+          "collected_at": 1788873452
+        }
+      ],
+      "plan": [
+        {
+          "action": "Reproduce the stall with a simulated unresponsive runtime",
+          "owner": "agy",
+          "priority": "IMMEDIATE",
+          "command": "pytest tests/test_provider_recovery.py -k stall",
+          "state": "complete"
+        },
+        {
+          "action": "Classify timeout as a failover trigger",
+          "owner": "agy",
+          "priority": "IMMEDIATE",
+          "command": "",
+          "state": "complete"
+        },
+        {
+          "action": "Run subsystem tests",
+          "owner": "control_plane",
+          "priority": "NEXT",
+          "command": "pytest tests/test_provider_recovery.py",
+          "state": "complete"
+        },
+        {
+          "action": "Remediate reviewer findings",
+          "owner": "agy",
+          "priority": "NEXT",
+          "command": "",
+          "state": "complete"
+        },
+        {
+          "action": "Re-run verification",
+          "owner": "control_plane",
+          "priority": "NEXT",
+          "command": "pytest tests/",
+          "state": "complete"
+        }
+      ],
+      "execution": {
+        "executor": "agy",
+        "started_at": 1788874652,
+        "ended_at": 1788890852,
+        "current_operation": "",
+        "retries": 1,
+        "recovery_actions": [
+          "remediation_started after verification failure",
+          "queue drain assertion corrected",
+          "implementation_recovered"
+        ],
+        "receipt": {
+          "executed_at": 1788890852,
+          "verification": "passed",
+          "rollback_status": "not_required",
+          "error_message": ""
+        },
+        "delta": {
+          "files_added": [
+            "tests/test_provider_recovery.py"
+          ],
+          "files_modified": [
+            "src/control_plane/executor.py",
+            "src/control_plane/agent_execution.py"
+          ],
+          "files_deleted": [],
+          "insertions": 118,
+          "deletions": 21,
+          "unexpected": []
+        }
+      },
+      "verification": [
+        {
+          "name": "Subsystem tests (pytest tests/test_provider_recovery.py)",
+          "status": "failed",
+          "exit_code": 1,
+          "output_digest": "sha256:9c04e7bb2a13",
+          "started_at": 1788880052,
+          "finished_at": 1788880452
+        },
+        {
+          "name": "Subsystem tests after remediation",
+          "status": "passed",
+          "exit_code": 0,
+          "output_digest": "sha256:1ae8d3f70cb9",
+          "started_at": 1788887252,
+          "finished_at": 1788887632
+        },
+        {
+          "name": "Lint check (flake8)",
+          "status": "passed",
+          "exit_code": 0,
+          "output_digest": "sha256:63b0aa19ff42",
+          "started_at": 1788887652,
+          "finished_at": 1788887682
+        },
+        {
+          "name": "Full regression (pytest tests/)",
+          "status": "passed",
+          "exit_code": 0,
+          "output_digest": "sha256:8de2c5017b6a",
+          "started_at": 1788887752,
+          "finished_at": 1788890852
+        }
+      ]
+    },
+    {
+      "id": "HB-051",
+      "title": "Add contributor activity heatmap to the dashboard",
+      "description": "Proposed per-contributor activity panel showing commit frequency and active hours.",
+      "project": "HowlBoard",
+      "priority": "LOW",
+      "risk_level": "MEDIUM",
+      "task_class": "feature",
+      "state": "CLOSED",
+      "executor": "",
+      "recommended_executor": "gemini_cli",
+      "is_override": false,
+      "outcome": "task_closed",
+      "provenance": "DEMO",
+      "created_at": 1788613652,
+      "updated_at": 1788619052,
+      "reasoning": {
+        "problem": "A request for per-contributor activity visualisation showing commit frequency and active hours per person.",
+        "observations": [
+          "HowlRelay's model raises SurveillanceSignalError for prohibited metadata keys.",
+          "Active-hours tracking is a worker-observation signal, not a work-observation signal.",
+          "The stated need - knowing whether work is progressing - is already served by mission state and verification results."
+        ],
+        "assumptions": [
+          "The underlying need is progress visibility, not individual monitoring."
+        ],
+        "options": [
+          {
+            "option": "Build the heatmap as requested",
+            "assessment": "Directly violates the ecosystem's surveillance prohibition."
+          },
+          {
+            "option": "Build a per-project throughput panel with no individual attribution",
+            "assessment": "Serves the stated need without observing individuals."
+          },
+          {
+            "option": "Reject and document the boundary",
+            "assessment": "Selected; the request conflicts with a stated design constraint."
+          }
+        ],
+        "selected": "Reject and document the boundary",
+        "rationale": "HowlRelay's core thesis is to measure the work system, not the worker, and it enforces that in code. Building per-person activity tracking into the ecosystem's own dashboard would contradict a constraint the ecosystem enforces on everyone else.",
+        "confidence": "high",
+        "decided_by": "human_operator"
+      },
+      "authority": {
+        "decision": "DENY",
+        "reason": "conflicts with the surveillance prohibition enforced in howlrelay/model.py",
+        "digest": "sha256:3c8fa1027e64",
+        "gates": [
+          {
+            "name": "repository_authorized",
+            "status": "PASS"
+          },
+          {
+            "name": "action_class_allowed",
+            "status": "PASS"
+          },
+          {
+            "name": "surveillance_policy",
+            "status": "FAIL"
+          }
+        ]
+      },
+      "evidence": [
+        {
+          "type": "howlframe_policy",
+          "ref": "src/howlrelay/model.py:SurveillanceSignalError",
+          "source": "howlcipher/howlrelay",
+          "description": "Prohibited-key validation rejecting surveillance signals in evidence metadata",
+          "fingerprint": "sha256:e71ab409d3c2",
+          "collected_at": 1788615452
+        },
+        {
+          "type": "decision_record",
+          "ref": "howlrelay/DECISIONS.md",
+          "source": "howlcipher/howlrelay",
+          "description": "Measure the work system, not the worker",
+          "fingerprint": "sha256:0ba7cc51e9f8",
+          "collected_at": 1788615752
+        }
+      ],
+      "plan": [
+        {
+          "action": "Check the proposal against ecosystem policy",
+          "owner": "gemini_cli",
+          "priority": "IMMEDIATE",
+          "command": "",
+          "state": "complete"
+        },
+        {
+          "action": "Implement the heatmap",
+          "owner": "gemini_cli",
+          "priority": "NEXT",
+          "command": "",
+          "state": "skipped"
+        },
+        {
+          "action": "Record the rejection rationale",
+          "owner": "human_operator",
+          "priority": "IMMEDIATE",
+          "command": "",
+          "state": "complete"
+        }
+      ],
+      "execution": {
+        "executor": "",
+        "started_at": 0,
+        "ended_at": 0,
+        "current_operation": "",
+        "retries": 0,
+        "recovery_actions": [],
+        "receipt": {
+          "executed_at": 0,
+          "verification": "",
+          "rollback_status": "",
+          "error_message": "execution never started; proposal denied"
+        },
+        "delta": {
+          "files_added": [],
+          "files_modified": [],
+          "files_deleted": [],
+          "insertions": 0,
+          "deletions": 0,
+          "unexpected": []
+        }
+      },
+      "verification": []
+    },
+    {
+      "id": "INFRA-233",
+      "title": "Rotate the release signing key on the build host",
+      "description": "The release signing key is past its rotation window. Rotation touches deployment credentials and cannot proceed autonomously.",
+      "project": "HowlPlane",
+      "priority": "HIGH",
+      "risk_level": "CRITICAL",
+      "task_class": "infrastructure",
+      "state": "BLOCKED",
+      "executor": "",
+      "recommended_executor": "human_operator",
+      "is_override": false,
+      "outcome": "",
+      "provenance": "DEMO",
+      "created_at": 1788700052,
+      "updated_at": 1788937652,
+      "reasoning": {
+        "problem": "The release signing key is past its rotation window. Rotation replaces a credential that signs every published artifact.",
+        "observations": [
+          "The key is 400 days old against a 365-day policy.",
+          "An approval was granted 30 hours ago with a one-hour TTL and has since lapsed.",
+          "No autonomous action class covers credential replacement."
+        ],
+        "assumptions": [
+          "Rotation requires physical access to the build host's key store."
+        ],
+        "options": [
+          {
+            "option": "Rotate autonomously using stored credentials",
+            "assessment": "Outside every delegated action class; rejected."
+          },
+          {
+            "option": "Prepare the rotation runbook and hold for a human",
+            "assessment": "Selected; the agent can prepare but not execute."
+          },
+          {
+            "option": "Extend the rotation window",
+            "assessment": "Defers the risk without addressing it."
+          }
+        ],
+        "selected": "Prepare the rotation runbook and hold for a human",
+        "rationale": "Credential replacement sits outside the authority envelope entirely. The useful autonomous contribution is a complete, verifiable runbook, not the action itself.",
+        "confidence": "high",
+        "decided_by": "control_plane"
+      },
+      "authority": {
+        "decision": "REQUIRE_APPROVAL",
+        "reason": "credential replacement is outside every delegated action class",
+        "digest": "sha256:af02be7714d9",
+        "gates": [
+          {
+            "name": "repository_authorized",
+            "status": "PASS"
+          },
+          {
+            "name": "action_class_allowed",
+            "status": "FAIL"
+          },
+          {
+            "name": "risk_below_threshold",
+            "status": "FAIL"
+          },
+          {
+            "name": "human_sign_off",
+            "status": "EXPIRED"
+          }
+        ],
+        "approval": {
+          "approver": "human_operator",
+          "issued_at": 1788937652,
+          "expires_in": -104400
+        }
+      },
+      "evidence": [
+        {
+          "type": "git_status",
+          "ref": "build-host:/etc/howl/signing",
+          "source": "infrastructure inventory",
+          "description": "Signing key age 400 days against a 365-day policy",
+          "fingerprint": "sha256:c9017fa4e2b7",
+          "collected_at": 1788701252
+        },
+        {
+          "type": "continuity_doc",
+          "ref": "docs/runbooks/key_rotation.md",
+          "source": "howlplane",
+          "description": "Rotation runbook prepared by the agent, awaiting a human operator",
+          "fingerprint": "sha256:2f6b81dd034a",
+          "collected_at": 1788707252
+        },
+        {
+          "type": "decision_record",
+          "ref": "authority_envelope.denied_action_classes",
+          "source": "howlplane",
+          "description": "credential_rotation is not a delegated action class",
+          "fingerprint": "sha256:75e3cc9021ba",
+          "collected_at": 1788701552
+        }
+      ],
+      "plan": [
+        {
+          "action": "Inventory the current key and its age",
+          "owner": "control_plane",
+          "priority": "IMMEDIATE",
+          "command": "",
+          "state": "complete"
+        },
+        {
+          "action": "Prepare the rotation runbook",
+          "owner": "control_plane",
+          "priority": "IMMEDIATE",
+          "command": "",
+          "state": "complete"
+        },
+        {
+          "action": "Obtain a human operator with build-host access",
+          "owner": "human_operator",
+          "priority": "IMMEDIATE",
+          "command": "",
+          "state": "failed"
+        },
+        {
+          "action": "Execute rotation",
+          "owner": "human_operator",
+          "priority": "NEXT",
+          "command": "",
+          "state": "pending"
+        },
+        {
+          "action": "Verify artifact signatures against the new key",
+          "owner": "control_plane",
+          "priority": "LATER",
+          "command": "",
+          "state": "pending"
+        }
+      ],
+      "execution": {
+        "executor": "",
+        "started_at": 0,
+        "ended_at": 0,
+        "current_operation": "blocked - approval lapsed before an operator was available",
+        "retries": 0,
+        "recovery_actions": [
+          "approval requested a second time; not yet granted"
+        ],
+        "receipt": {
+          "executed_at": 0,
+          "verification": "",
+          "rollback_status": "",
+          "error_message": "authority lapsed before execution"
+        },
+        "delta": {
+          "files_added": [],
+          "files_modified": [],
+          "files_deleted": [],
+          "insertions": 0,
+          "deletions": 0,
+          "unexpected": []
+        }
+      },
+      "verification": [
+        {
+          "name": "Signing key age policy check",
+          "status": "failed",
+          "exit_code": 1,
+          "output_digest": "sha256:44de10b8f7c9",
+          "started_at": 1788701252,
+          "finished_at": 1788701312
+        },
+        {
+          "name": "Artifact signature audit",
+          "status": "claimed",
+          "exit_code": 0,
+          "output_digest": "",
+          "started_at": 1788701372,
+          "finished_at": 1788701372
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "mission_id": "HB-051",
+      "action": "task_created",
+      "actor": "human_operator",
+      "detail": "Feature request raised",
+      "timestamp": 1788613652
+    },
+    {
+      "mission_id": "HB-051",
+      "action": "project_discovered",
+      "actor": "control_plane",
+      "detail": "Repository howlcipher/howlboard resolved",
+      "timestamp": 1788613952
+    },
+    {
+      "mission_id": "HB-051",
+      "action": "human_boundary_triggered",
+      "actor": "control_plane",
+      "detail": "surveillance_policy gate FAIL",
+      "timestamp": 1788615452
+    },
+    {
+      "mission_id": "HB-051",
+      "action": "human_decision_requested",
+      "actor": "control_plane",
+      "detail": "decision packet prepared",
+      "timestamp": 1788616052
+    },
+    {
+      "mission_id": "HB-051",
+      "action": "human_rejection",
+      "actor": "human_operator",
+      "detail": "conflicts with the surveillance prohibition",
+      "timestamp": 1788618752
+    },
+    {
+      "mission_id": "HB-051",
+      "action": "task_closed",
+      "actor": "control_plane",
+      "detail": "outcome task_closed",
+      "timestamp": 1788619052
+    },
+    {
+      "mission_id": "INFRA-233",
+      "action": "task_created",
+      "actor": "control_plane",
+      "detail": "Key rotation window exceeded",
+      "timestamp": 1788700052
+    },
+    {
+      "mission_id": "INFRA-233",
+      "action": "project_discovered",
+      "actor": "control_plane",
+      "detail": "Build host inventory resolved",
+      "timestamp": 1788701252
+    },
+    {
+      "mission_id": "INFRA-233",
+      "action": "human_boundary_triggered",
+      "actor": "control_plane",
+      "detail": "action_class_allowed gate FAIL",
+      "timestamp": 1788701552
+    },
+    {
+      "mission_id": "INFRA-233",
+      "action": "human_decision_requested",
+      "actor": "control_plane",
+      "detail": "runbook prepared, operator required",
+      "timestamp": 1788707252
+    },
+    {
+      "mission_id": "HF-412",
+      "action": "task_created",
+      "actor": "human_operator",
+      "detail": "Bug #56 filed from fuzzing run",
+      "timestamp": 1788786452
+    },
+    {
+      "mission_id": "HF-412",
+      "action": "project_discovered",
+      "actor": "control_plane",
+      "detail": "Repository howlcipher/howlframe resolved",
+      "timestamp": 1788786752
+    },
+    {
+      "mission_id": "HF-412",
+      "action": "route_selected",
+      "actor": "control_plane",
+      "detail": "claude_code selected (tier_1, bug_fix)",
+      "timestamp": 1788787052
+    },
+    {
+      "mission_id": "HF-412",
+      "action": "implementation_started",
+      "actor": "claude_code",
+      "detail": "",
+      "timestamp": 1788787652
+    },
+    {
+      "mission_id": "HF-412",
+      "action": "repository_delta_captured",
+      "actor": "control_plane",
+      "detail": "2 files modified, +34/-2",
+      "timestamp": 1788791972
+    },
+    {
+      "mission_id": "HF-412",
+      "action": "implementation_completed",
+      "actor": "claude_code",
+      "detail": "",
+      "timestamp": 1788792152
+    },
+    {
+      "mission_id": "HF-412",
+      "action": "verification_started",
+      "actor": "control_plane",
+      "detail": "",
+      "timestamp": 1788792212
+    },
+    {
+      "mission_id": "HF-412",
+      "action": "verification_completed",
+      "actor": "control_plane",
+      "detail": "passed",
+      "timestamp": 1788792452
+    },
+    {
+      "mission_id": "HF-412",
+      "action": "task_completed",
+      "actor": "control_plane",
+      "detail": "outcome task_completed",
+      "timestamp": 1788792512
+    },
+    {
+      "mission_id": "HP-207",
+      "action": "task_created",
+      "actor": "human_operator",
+      "detail": "Queue stall reported",
+      "timestamp": 1788872852
+    },
+    {
+      "mission_id": "HP-207",
+      "action": "route_selected",
+      "actor": "control_plane",
+      "detail": "claude_code recommended; agy selected (override)",
+      "timestamp": 1788873452
+    },
+    {
+      "mission_id": "HP-207",
+      "action": "implementation_started",
+      "actor": "agy",
+      "detail": "",
+      "timestamp": 1788874652
+    },
+    {
+      "mission_id": "HP-207",
+      "action": "verification_started",
+      "actor": "control_plane",
+      "detail": "",
+      "timestamp": 1788880052
+    },
+    {
+      "mission_id": "HP-207",
+      "action": "verification_completed",
+      "actor": "control_plane",
+      "detail": "failed - 2 failures in failover classification",
+      "timestamp": 1788880452
+    },
+    {
+      "mission_id": "HP-207",
+      "action": "remediation_started",
+      "actor": "agy",
+      "detail": "queue drain assertion corrected",
+      "timestamp": 1788880652
+    },
+    {
+      "mission_id": "HP-207",
+      "action": "remediation_completed",
+      "actor": "agy",
+      "detail": "",
+      "timestamp": 1788884252
+    },
+    {
+      "mission_id": "HP-207",
+      "action": "implementation_recovered",
+      "actor": "agy",
+      "detail": "",
+      "timestamp": 1788887252
+    },
+    {
+      "mission_id": "HP-207",
+      "action": "verification_completed",
+      "actor": "control_plane",
+      "detail": "passed",
+      "timestamp": 1788890852
+    },
+    {
+      "mission_id": "HP-207",
+      "action": "task_completed",
+      "actor": "control_plane",
+      "detail": "outcome task_completed",
+      "timestamp": 1788890912
+    },
+    {
+      "mission_id": "INFRA-233",
+      "action": "human_approval",
+      "actor": "human_operator",
+      "detail": "approval granted with a one-hour TTL",
+      "timestamp": 1788937652
+    },
+    {
+      "mission_id": "INFRA-233",
+      "action": "task_failed",
+      "actor": "control_plane",
+      "detail": "approval lapsed before an operator was available",
+      "timestamp": 1788941252
+    },
+    {
+      "mission_id": "CO-118",
+      "action": "task_created",
+      "actor": "human_operator",
+      "detail": "Raised from rollout audit",
+      "timestamp": 1789024052
+    },
+    {
+      "mission_id": "CO-118",
+      "action": "route_selected",
+      "actor": "control_plane",
+      "detail": "codex selected (tier_2, policy_change)",
+      "timestamp": 1789024652
+    },
+    {
+      "mission_id": "CO-118",
+      "action": "human_boundary_triggered",
+      "actor": "control_plane",
+      "detail": "change widens an authority boundary",
+      "timestamp": 1789042952
+    },
+    {
+      "mission_id": "CO-118",
+      "action": "human_decision_requested",
+      "actor": "control_plane",
+      "detail": "decision packet prepared for operator",
+      "timestamp": 1789043252
+    }
+  ]
+}
