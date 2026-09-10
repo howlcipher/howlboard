@@ -121,7 +121,11 @@
                                                   ; A pytest-produced entry is labelled as such and never
                                                   ; presented as a real execution.
                                                   (let (artifact (to_string (map_get entry "artifact")))
-                                                    (if (call contains artifact "pytest")
+                                                    ; A "/tmp/pytest-of-.../" artifact path means the record
+                                                    ; was produced by a test run against a temporary fixture
+                                                    ; repository. A command that merely invokes pytest is a
+                                                    ; real verification step and is not marked.
+                                                    (if (call contains artifact "pytest-of-")
                                                       (map_set m "origin" "test_fixture")
                                                       (do)
                                                     )

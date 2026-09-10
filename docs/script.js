@@ -4,93 +4,206 @@
  * code snippet copy, light/dark theme toggle, ecosystem drawer.
  */
 
-const demoTasks = [
-  { id: 1, title: "Initialize Full-Stack Architecture", description: "Bootstrap frontend web_app and backend http_server under HowlFrame.", priority: "HIGH", tags: "setup,hfbc", status: "DONE" },
-  { id: 2, title: "Enforce State Invariant Policy", description: "Ensure status transitions are strictly validated in server.howl.", priority: "CRITICAL", tags: "policy,state", status: "DONE" },
-  { id: 3, title: "HTML DOM Mutation (set_html)", description: "Added set_html and toggle_class primitives to HowlFrame JS backend.", priority: "HIGH", tags: "compiler,fix", status: "DONE" },
-  { id: 4, title: "CORS & HTTP Request Method", description: "Added req_method and res_header capabilities to bytecode server.", priority: "MED", tags: "runtime,net", status: "IN_PROGRESS" },
-  { id: 5, title: "AI-Assisted Task Proposer", description: "Allow AI agents to propose task additions subject to deterministic gate.", priority: "LOW", tags: "agent,ai", status: "READY" },
-  { id: 6, title: "List Parsing in Bytecode Payload", description: "Improve AST walker loop ergonomics for deserializing JSON lists.", priority: "HIGH", tags: "parser,eval", status: "BLOCKED" },
-  { id: 7, title: "Telemetry Heartbeat Aggregation", description: "Stream real-time VM instruction counts to dashboard console.", priority: "LOW", tags: "telemetry", status: "BACKLOG" }
+// Static, read-only mission-control showcase.
+//
+// Driven by missions.json, which is a copy of the same data/fixtures/missions.json
+// the real application loads through POST /api/seed. There is no server behind
+// this page: state changes, approvals and transitions are not available here.
+// Reading the fixture rather than a second hardcoded copy is deliberate - the
+// previous demo drifted from the backend it claimed to illustrate.
+
+const SPINE = [
+  ['01', 'Mission'], ['02', 'Evidence'], ['03', 'Decision'], ['04', 'Authority'],
+  ['05', 'Plan'], ['06', 'Executor'], ['07', 'Execution'], ['08', 'Verification'],
+  ['09', 'Outcome'], ['10', 'Audit timeline'],
 ];
 
-const validTransitions = {
-  "BACKLOG": ["READY"],
-  "READY": ["IN_PROGRESS", "BACKLOG"],
-  "IN_PROGRESS": ["BLOCKED", "DONE", "READY"],
-  "BLOCKED": ["IN_PROGRESS", "READY"],
-  "DONE": ["IN_PROGRESS"]
-};
+let demoMissions = [];
+let demoEvents = [];
 
-function logTelemetry(msg, isError = false) {
-  const readout = document.getElementById("telemetry-readout");
-  if (readout) {
-    const time = new Date().toISOString().substring(11, 19);
-    readout.innerHTML = `<span style="color: ${isError ? 'var(--color-red)' : 'var(--color-cyan)'};">[${time}]</span> ${msg}`;
+function esc(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;').replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+}
+
+function ago(ts) {
+  const delta = Math.max(0, Math.floor(Date.now() / 1000) - Number(ts || 0));
+  if (delta < 60) return 'just now';
+  if (delta < 3600) return `${Math.floor(delta / 60)}m ago`;
+  if (delta < 86400) return `${Math.floor(delta / 3600)}h ago`;
+  return `${Math.floor(delta / 86400)}d ago`;
+}
+
+// Authority is derived here exactly as the server derives it, so a lapsed
+// approval reads as expired on this page too.
+function envelopeStatus(m) {
+  const auth = m.authority;
+  if (!auth) return 'ENVELOPE_ABSENT';
+  const approval = auth.approval;
+  if (!approval) {
+    if (auth.decision === 'ALLOW') return 'DELEGATED_AUTHORITY_ALLOW';
+    if (auth.decision === 'DENY') return 'DENIED_BY_ENVELOPE';
+    return 'ENVELOPE_ABSENT';
   }
+  // Fixtures declare approval lifetimes relative to load time, exactly as the
+  // server's seed route resolves them, so the expiry demonstration stays
+  // truthful as the file ages instead of decaying into a fixed timestamp.
+  const expiresAt = approval.expires_at !== undefined
+    ? Number(approval.expires_at)
+    : Math.floor(Date.now() / 1000) + Number(approval.expires_in || 0);
+  if (expiresAt < Math.floor(Date.now() / 1000)) return 'ENVELOPE_EXPIRED';
+  if (auth.decision === 'DENY') return 'DENIED_BY_ENVELOPE';
+  return 'DELEGATED_AUTHORITY_ALLOW';
 }
 
-function transitionTask(taskId, targetStatus) {
-  const task = demoTasks.find(t => t.id === taskId);
-  if (!task) return;
+function stage(step, title, inner) {
+  return `<div class="demo-stage"><h4 data-step="${step}">${esc(title)}</h4>${inner}</div>`;
+}
 
-  const allowed = validTransitions[task.status] || [];
-  if (allowed.includes(targetStatus)) {
-    const oldStatus = task.status;
-    task.status = targetStatus;
-    loadDemo();
-    logTelemetry(`STATE TRANSITION: ALLOWED // Task #${task.id} (${task.title.substring(0, 24)}...): ${oldStatus} &rarr; ${targetStatus}`);
-  } else {
-    logTelemetry(`STATE TRANSITION: DENIED // Invariant policy violation: Cannot jump directly from ${task.status} to ${targetStatus}`, true);
+function kv(rows) {
+  return `<dl class="demo-kv">${rows
+    .filter(([, v]) => v !== undefined && v !== null && v !== '')
+    .map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join('')}</dl>`;
+}
+
+function renderDetail(m) {
+  const env = envelopeStatus(m);
+  const out = [];
+
+  out.push(stage('01', 'Mission',
+    `<p class="demo-title">${esc(m.title)}</p><p class="demo-desc">${esc(m.description)}</p>` +
+    kv([['Identifier', esc(m.id)], ['Workstream', esc(m.project)],
+        ['State', `<span class="demo-state s-${esc(m.state)}">${esc(m.state)}</span>`],
+        ['Priority', esc(m.priority)], ['Risk', esc(m.risk_level)],
+        ['Class', esc(m.task_class)], ['Updated', ago(m.updated_at)],
+        ['Provenance', `<span class="demo-badge">${esc(m.provenance)}</span>`]])));
+
+  out.push(stage('02', 'Evidence', (m.evidence || []).length
+    ? m.evidence.map(e => `<div class="demo-item"><span class="demo-tag">${esc(e.type)}</span>
+        <strong>${esc(e.ref)}</strong><span class="demo-sub">${esc(e.description)}</span>
+        <span class="demo-sub">source ${esc(e.source)} &middot; ${esc(e.fingerprint)}</span></div>`).join('')
+    : '<p class="demo-sub">No evidence recorded.</p>'));
+
+  const r = m.reasoning || {};
+  out.push(stage('03', 'Decision', kv([
+    ['Problem', esc(r.problem)],
+    ['Observations', (r.observations || []).map(o => `<div class="demo-sub">&bull; ${esc(o)}</div>`).join('')],
+    ['Options', (r.options || []).map(o =>
+      `<div class="demo-item"><strong>${esc(o.option)}</strong><span class="demo-sub">${esc(o.assessment)}</span></div>`).join('')],
+    ['Selected', `<strong>${esc(r.selected)}</strong>`],
+    ['Rationale', esc(r.rationale)],
+    ['Confidence', esc(r.confidence)],
+    ['Decided by', esc(r.decided_by)],
+  ])));
+
+  const a = m.authority || {};
+  const ap = a.approval;
+  out.push(stage('04', 'Authority',
+    `<p class="demo-banner env-${esc(env)}">${esc(env)}</p>` + kv([
+      ['Decision', esc(a.decision)], ['Reason', esc(a.reason)], ['Digest', esc(a.digest)],
+      ['Gates', (a.gates || []).map(g =>
+        `<div class="demo-gate"><span>${esc(g.name)}</span><span class="demo-status st-${esc(g.status)}">${esc(g.status)}</span></div>`).join('')],
+      ['Approver', ap ? esc(ap.approver) : ''],
+      ['Expiry', ap ? (env === 'ENVELOPE_EXPIRED'
+        ? `<span class="demo-status st-EXPIRED">Approval has lapsed</span>`
+        : 'Valid') : ''],
+    ])));
+
+  out.push(stage('05', 'Plan', (m.plan || []).map(s => {
+    const marker = { complete: '[x]', active: '[>]', failed: '[!]', skipped: '[-]' }[s.state] || '[ ]';
+    return `<div class="demo-step p-${esc(s.state)}"><span class="demo-marker">${marker}</span>
+      <span>${esc(s.action)}<span class="demo-sub">${esc(s.owner)} &middot; ${esc(s.state)}</span></span></div>`;
+  }).join('') || '<p class="demo-sub">No plan recorded.</p>'));
+
+  out.push(stage('06', 'Executor', kv([
+    ['Assigned', esc(m.executor) || '<span class="demo-sub">None; work was never dispatched.</span>'],
+    ['Recommended', esc(m.recommended_executor)],
+    ['Override', m.is_override ? `<span class="demo-status st-PENDING">Yes &mdash; ${esc(m.override_reason)}</span>` : 'No'],
+  ])));
+
+  const x = m.execution || {};
+  const d = x.delta || {};
+  out.push(stage('07', 'Execution', kv([
+    ['Started', Number(x.started_at) ? ago(x.started_at) : '<span class="demo-sub">Never started.</span>'],
+    ['Current', esc(x.current_operation)],
+    ['Retries', String(x.retries ?? 0)],
+    ['Files changed', (d.files_modified || []).map(f => `<div class="demo-sub">${esc(f)}</div>`).join('') || '<span class="demo-sub">none</span>'],
+    ['Diff', `+${d.insertions ?? 0} / -${d.deletions ?? 0}`],
+    ['Unexpected changes', (d.unexpected || []).length
+      ? `<span class="demo-status st-failed">${d.unexpected.map(esc).join(', ')}</span>`
+      : '<span class="demo-status st-passed">None detected</span>'],
+    ['Error', x.receipt && x.receipt.error_message ? `<span class="demo-status st-failed">${esc(x.receipt.error_message)}</span>` : ''],
+    ['Recovery', (x.recovery_actions || []).map(v => `<div class="demo-sub">&bull; ${esc(v)}</div>`).join('')],
+  ])));
+
+  // "claimed" is never folded into "passed": it means the agent asserted a
+  // result that nothing independently confirmed.
+  out.push(stage('08', 'Verification', (m.verification || []).length
+    ? m.verification.map(v => `<div class="demo-verify v-${esc(v.status)}">
+        <span>${esc(v.name)}${v.status === 'claimed'
+          ? '<span class="demo-claim">Claimed by the agent; not independently verified.</span>' : ''}
+        <span class="demo-sub">${esc(v.output_digest)}</span></span>
+        <span class="demo-status st-${esc(v.status)}">${esc(v.status)} (exit ${esc(v.exit_code)})</span></div>`).join('')
+    : '<p class="demo-sub">No verification has run.</p>'));
+
+  out.push(stage('09', 'Outcome', m.outcome
+    ? `<p class="demo-outcome o-${esc(m.outcome)}">${esc(m.outcome)}</p>`
+    : '<p class="demo-outcome o-pending">Not yet reached</p>'));
+
+  const mine = demoEvents.filter(e => e.mission_id === m.id);
+  out.push(stage('10', 'Audit timeline', `<div class="demo-timeline">${mine.map(e =>
+    `<div class="demo-event"><span class="demo-at">${ago(e.timestamp)}</span>
+     <span><span class="demo-what">${esc(e.action)}</span>
+     <span class="demo-who">${esc(e.actor)}</span>
+     ${e.detail ? `<span class="demo-sub">${esc(e.detail)}</span>` : ''}</span></div>`).join('')}</div>`));
+
+  return out.join('');
+}
+
+function selectMission(id) {
+  const m = demoMissions.find(x => x.id === id);
+  if (!m) return;
+  document.querySelectorAll('.demo-row').forEach(row => {
+    row.setAttribute('aria-current', row.dataset.id === id ? 'true' : 'false');
+  });
+  const detail = document.getElementById('demo-detail');
+  if (detail) detail.innerHTML = renderDetail(m);
+}
+
+function renderList() {
+  const list = document.getElementById('demo-list');
+  if (!list) return;
+  list.innerHTML = demoMissions.map(m => {
+    const env = envelopeStatus(m);
+    return `<button type="button" class="demo-row s-${esc(m.state)}" data-id="${esc(m.id)}" aria-current="false">
+      <span class="demo-row-top"><span class="demo-id">${esc(m.id)}</span>
+      <span class="demo-state s-${esc(m.state)}">${esc(m.state)}</span></span>
+      <span class="demo-row-title">${esc(m.title)}</span>
+      <span class="demo-row-meta"><span class="demo-tag">${esc(m.project)}</span>
+      <span class="demo-status st-${esc(env)}">${esc(env)}</span>
+      <span class="demo-badge">${esc(m.provenance)}</span></span></button>`;
+  }).join('');
+  list.querySelectorAll('.demo-row').forEach(row => {
+    row.addEventListener('click', () => selectMission(row.dataset.id));
+  });
+}
+
+async function loadDemo() {
+  const list = document.getElementById('demo-list');
+  if (!list) return;
+  try {
+    const response = await fetch('missions.json', { cache: 'no-cache' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const doc = await response.json();
+    demoMissions = doc.missions || [];
+    demoEvents = doc.events || [];
+  } catch (err) {
+    list.innerHTML = `<p class="demo-sub">Demo data could not be loaded (${esc(err.message)}).</p>`;
+    return;
   }
-}
-
-function renderCard(task) {
-  let actionButtons = "";
-  const allowed = validTransitions[task.status] || [];
-
-  allowed.forEach(nextState => {
-    actionButtons += `<button class="btn-card-action" onclick="transitionTask(${task.id}, '${nextState}')">&rarr; ${nextState}</button>`;
-  });
-
-  return `
-    <div class="task-card" id="task-${task.id}">
-      <div class="task-id">TASK_#${task.id} [${task.status}]</div>
-      <div class="task-title">${task.title}</div>
-      <div class="task-desc">${task.description}</div>
-      <div class="task-meta">
-        <span>PRIORITY: ${task.priority}</span>
-        <span>TAGS: ${task.tags}</span>
-      </div>
-      <div class="task-actions">
-        ${actionButtons}
-      </div>
-    </div>`;
-}
-
-function loadDemo() {
-  let backlog = "", ready = "", inprogress = "", blocked = "", done = "";
-
-  demoTasks.forEach(task => {
-    const card = renderCard(task);
-    if (task.status === "BACKLOG") backlog += card;
-    if (task.status === "READY") ready += card;
-    if (task.status === "IN_PROGRESS") inprogress += card;
-    if (task.status === "BLOCKED") blocked += card;
-    if (task.status === "DONE") done += card;
-  });
-
-  const bEl = document.getElementById("demo-backlog");
-  const rEl = document.getElementById("demo-ready");
-  const pEl = document.getElementById("demo-inprogress");
-  const blEl = document.getElementById("demo-blocked");
-  const dEl = document.getElementById("demo-done");
-
-  if (bEl) bEl.innerHTML = backlog || '<div style="font-size:0.75rem;color:var(--text-dim);text-align:center;padding:1rem;">EMPTY</div>';
-  if (rEl) rEl.innerHTML = ready || '<div style="font-size:0.75rem;color:var(--text-dim);text-align:center;padding:1rem;">EMPTY</div>';
-  if (pEl) pEl.innerHTML = inprogress || '<div style="font-size:0.75rem;color:var(--text-dim);text-align:center;padding:1rem;">EMPTY</div>';
-  if (blEl) blEl.innerHTML = blocked || '<div style="font-size:0.75rem;color:var(--text-dim);text-align:center;padding:1rem;">EMPTY</div>';
-  if (dEl) dEl.innerHTML = done || '<div style="font-size:0.75rem;color:var(--text-dim);text-align:center;padding:1rem;">EMPTY</div>';
+  renderList();
+  if (demoMissions.length) selectMission(demoMissions[0].id);
 }
 
 document.addEventListener('DOMContentLoaded', () => {

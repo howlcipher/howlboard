@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="HowlBoard is a full-stack deterministic board and evaluation surface stress-testing HowlFrame compiler pipelines, VM persistence, and state invariant policies.">
+    <meta name="description" content="HowlBoard is the canonical HowlFrame reference application: mission control for autonomous engineering work, showing authority, evidence and verification.">
     <link rel="canonical" href="https://howlcipher.github.io/howlboard/">
 
     <!-- Open Graph Metadata -->
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="HowlBoard">
-    <meta property="og:title" content="HowlBoard | Full-Stack Dogfooding &amp; Evaluation Surface">
-    <meta property="og:description" content="Full-stack deterministic board proving HowlFrame frontend compilation, bytecode VM persistence, and state transition invariant policies.">
+    <meta property="og:title" content="HowlBoard | AI Engineering Mission Control">
+    <meta property="og:description" content="Mission control for governed autonomous engineering work, built end to end in HowlFrame. Authority, evidence, verification and outcome, made inspectable.">
     <meta property="og:url" content="https://howlcipher.github.io/howlboard/">
     <meta property="og:image" content="https://howlcipher.github.io/howlboard/social-preview.png">
     <meta property="og:image:width" content="1200">
@@ -19,8 +19,8 @@
 
     <!-- Twitter Card Metadata -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="HowlBoard | Full-Stack Dogfooding &amp; Evaluation Surface">
-    <meta name="twitter:description" content="Full-stack deterministic board proving HowlFrame frontend compilation, bytecode VM persistence, and state transition invariant policies.">
+    <meta name="twitter:title" content="HowlBoard | AI Engineering Mission Control">
+    <meta name="twitter:description" content="Mission control for governed autonomous engineering work, built end to end in HowlFrame. Authority, evidence, verification and outcome, made inspectable.">
     <meta name="twitter:image" content="https://howlcipher.github.io/howlboard/social-preview.png">
     <meta name="twitter:image:alt" content="HowlBoard deterministic state matrix and telemetry evaluation surface">
 
@@ -47,7 +47,7 @@
     }
     </script>
 
-    <title>HowlBoard | Full-Stack Dogfooding &amp; Evaluation Surface</title>
+    <title>HowlBoard | AI Engineering Mission Control</title>
     <link rel="stylesheet" href="style.css">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="alternate icon" type="image/png" href="favicon.png">
@@ -191,12 +191,12 @@
                         <p class="hero-kicker">// observation / stress testing / evaluation surface</p>
                         <h1 id="main-title" class="hero-title">HowlBoard <span class="jp-sub">ハウルボード // 2026</span></h1>
                         <p class="hero-lead">
-                            HowlBoard is the flagship external consumer and reference application for HowlFrame, engineered by <a href="https://howlcipher.github.io/william_elias/" style="color: var(--color-amber); text-decoration: underline;">William Elias</a>. It is a full-stack deterministic task board built strictly with HowlFrame for both the browser client (<code>web_app</code>) and the backend (<code>server</code>).
+                            HowlBoard is the flagship external consumer and reference application for HowlFrame, engineered by <a href="https://howlcipher.github.io/william_elias/" style="color: var(--color-amber); text-decoration: underline;">William Elias</a>. It is a full-stack mission-control interface for governed autonomous engineering work, built strictly with HowlFrame for both the browser client (<code>web_app</code>) and the backend (<code>http_server</code> compiled to standalone bytecode).
                         </p>
                     </div>
 
                     <div class="axiom-card" role="region" aria-label="Core Purpose">
-                        <strong>AXIOM // APPLICATION FEEDBACK DRIVES PLATFORM MATURITY.</strong> The goal is not just another task board. The true goal is to prove how much of a legitimate full-stack system can be expressed through HowlFrame, discover compiler bugs, and harden the language under real application stress.
+                        <strong>AXIOM // APPLICATION FEEDBACK DRIVES PLATFORM MATURITY.</strong> The goal is not another task board. The true goal is to prove how much of a legitimate full-stack system can be expressed through HowlFrame, discover compiler bugs, and harden the language under real application stress.
                     </div>
 
                     <div class="hero-actions">
@@ -311,43 +311,31 @@ File-Backed Native Record Stores (howlboard.json &amp; howlboard_activity.json)<
             <!-- 03 Interactive Demo Board -->
             <section id="demo" class="tech-panel">
                 <div class="tech-header">
-                    <h2><span class="sec-id">SECTION // 03</span> Interactive State Machine Console</h2>
+                    <h2><span class="sec-id">SECTION // 03</span> Mission Control Showcase</h2>
                     <span class="subsystem-tag">HB-MOD-DEMO</span>
                 </div>
                 <div class="tech-body">
                     <p>
-                        The board below is an interactive client demonstration of HowlBoard's deterministic state machine policy (<code>BACKLOG &rarr; READY &rarr; IN_PROGRESS &rarr; BLOCKED / DONE</code>). Click the transition action buttons on any card to observe policy evaluation:
+                        A read-only view of the same five demo missions the running application loads.
+                        This page is static: there is no server behind it, so approvals, state
+                        transitions and rejections are not available here. Select a mission to trace
+                        it from evidence through to outcome.
+                    </p>
+                    <p class="demo-note">
+                        These missions describe plausible Howl ecosystem work and are marked
+                        <code>DEMO</code>. They are not records of real executions. The application
+                        can additionally ingest real HowlPlane control-plane ledger entries, which
+                        carry <code>LEDGER</code> provenance instead.
                     </p>
 
                     <div class="demo-board-wrap">
                         <div class="demo-board-header">
-                            <span>CONSOLE_TELEMETRY: STATE TRANSITION ENGINE</span>
-                            <span>POLICY: can_transition ENFORCED</span>
+                            <span>MISSION CONTROL // READ-ONLY SHOWCASE</span>
+                            <span>AUTHORITY DERIVED AT RENDER TIME</span>
                         </div>
-                        <div id="telemetry-readout" class="demo-console-readout">
-                            [SYSTEM READY] Click any task action button below to test deterministic state machine transition invariants.
-                        </div>
-                        <div class="board-columns">
-                            <div class="board-column">
-                                <div class="col-header">BACKLOG</div>
-                                <div id="demo-backlog" class="col-cards"></div>
-                            </div>
-                            <div class="board-column">
-                                <div class="col-header">READY</div>
-                                <div id="demo-ready" class="col-cards"></div>
-                            </div>
-                            <div class="board-column">
-                                <div class="col-header">IN_PROGRESS</div>
-                                <div id="demo-inprogress" class="col-cards"></div>
-                            </div>
-                            <div class="board-column">
-                                <div class="col-header">BLOCKED</div>
-                                <div id="demo-blocked" class="col-cards"></div>
-                            </div>
-                            <div class="board-column">
-                                <div class="col-header">DONE</div>
-                                <div id="demo-done" class="col-cards"></div>
-                            </div>
+                        <div class="demo-split">
+                            <div id="demo-list" class="demo-list" aria-label="Demo missions"></div>
+                            <div id="demo-detail" class="demo-detail" aria-live="polite"></div>
                         </div>
                     </div>
                 </div>
@@ -412,25 +400,26 @@ File-Backed Native Record Stores (howlboard.json &amp; howlboard_activity.json)<
                 </div>
                 <div class="tech-body">
                     <p>
-                        HowlBoard enforces a deterministic state machine policy. A task in <code>BACKLOG</code> cannot jump directly to <code>BLOCKED</code> or <code>DONE</code> without transitioning through <code>READY</code> and <code>IN_PROGRESS</code>:
+                        HowlBoard enforces a deterministic mission state machine. A mission cannot skip a lifecycle stage, and separately, it cannot enter <code>EXECUTING</code> at all without live delegated authority &mdash; the state machine and the authority envelope are two independent gates:
                     </p>
                     <div class="code-container">
                         <div class="code-header">
                             <span class="code-title">[HOWL // POLICY_INVARIANT]</span>
                             <span class="subsystem-tag">TRANSITION_GATE</span>
                         </div>
-                        <pre><code>(defun can_transition (from_status to_status)
-  (if (= from_status "BACKLOG")
-    (= to_status "READY")
-    (if (= from_status "READY")
-      (or (= to_status "IN_PROGRESS") (= to_status "BACKLOG"))
-      (if (= from_status "IN_PROGRESS")
-        (or (= to_status "BLOCKED") (= to_status "DONE") (= to_status "READY"))
-        (if (= from_status "BLOCKED")
-          (or (= to_status "IN_PROGRESS") (= to_status "READY"))
-          (if (= from_status "DONE")
-            (= to_status "IN_PROGRESS")
-            false))))))</code></pre>
+                        <pre><code>(defun can_transition (from to)
+  (type_hint return "bool")
+  (let (ok false)
+    (do
+      (if (and (= from "CREATED") (= to "ROUTED")) (set ok true) (do))
+      (if (and (= from "ROUTED") (= to "EXECUTING")) (set ok true) (do))
+      (if (and (= from "ROUTED") (= to "AWAITING_APPROVAL")) (set ok true) (do))
+      (if (and (= from "AWAITING_APPROVAL") (= to "EXECUTING")) (set ok true) (do))
+      (if (and (= from "EXECUTING") (= to "VERIFYING")) (set ok true) (do))
+      (if (and (= from "VERIFYING") (= to "COMPLETED")) (set ok true) (do))
+      (if (and (= from "VERIFYING") (= to "REMEDIATING")) (set ok true) (do))
+      ;; ... full table in backend/server.howl
+      (return ok))))</code></pre>
                     </div>
                 </div>
             </section>
@@ -480,7 +469,7 @@ make run-frontend</code></pre>
                             <h3>Completed Features</h3>
                             <ul>
                                 <li>Full frontend and backend compilation via HowlFrame</li>
-                                <li>Deterministic Kanban task state transitions</li>
+                                <li>Deterministic mission state transitions</li>
                                 <li>Native disk store persistence (survives restart)</li>
                                 <li>Real-time telemetry event logging</li>
                             </ul>
@@ -490,12 +479,14 @@ make run-frontend</code></pre>
                             <ul>
                                 <li>String interpolation ergonomics in Howl AST</li>
                                 <li>Complex array loops in REST JSON decoding</li>
-                                <li>LLM-assisted task generation bounded by <code>can_transition</code></li>
+                                <li>Live HowlPlane control-plane ledger streaming</li>
                             </ul>
                         </div>
                     </div>
                 </div>
             <!-- 08 Technical Q&A -->
+            </section>
+
             <section id="technical-qa" class="tech-panel">
                 <div class="tech-header">
                     <h2><span class="sec-id">SECTION // 08</span> Technical Q&amp;A: Deterministic State Machines &amp; Language Dogfooding</h2>
@@ -510,9 +501,9 @@ make run-frontend</code></pre>
                             </p>
                         </div>
                         <div class="qa-item">
-                            <h3>Why is deterministic state transition enforcement critical for task boards?</h3>
+                            <h3>Why is deterministic state transition enforcement critical for autonomous work?</h3>
                             <p>
-                                In safe autonomous systems engineered by <a href="https://howlcipher.github.io/william_elias/">William Elias</a>, state cannot mutate arbitrarily. The <code>can_transition</code> policy function strictly restricts state progression (e.g., tasks must move through <code>READY</code> and <code>IN_PROGRESS</code> before completion), eliminating race conditions, invalid states, and unauthorized mutations across multi-agent workflows.
+                                In safe autonomous systems engineered by <a href="https://howlcipher.github.io/william_elias/">William Elias</a>, state cannot mutate arbitrarily. The <code>can_transition</code> policy function strictly restricts state progression, and authority is derived on every read rather than replayed from storage, so an approval that has lapsed presents as <code>ENVELOPE_EXPIRED</code> and execution is refused. Together these eliminate invalid states and unauthorized mutations across multi-agent workflows.
                             </p>
                         </div>
                         <div class="qa-item">

@@ -1047,3 +1047,176 @@ tr:hover td {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ============================================================================
+   SECTION 03 - Mission control showcase (read-only)
+   Mirrors the running application's spine so the published demo cannot drift
+   from the product it illustrates.
+   ========================================================================= */
+
+.demo-note {
+    border-left: 3px solid var(--color-amber);
+    padding-left: 12px;
+    font-size: 0.9rem;
+}
+
+.demo-split {
+    display: grid;
+    grid-template-columns: minmax(0, 4fr) minmax(0, 6fr);
+    gap: 0;
+}
+
+.demo-list {
+    border-right: 1px solid var(--border-medium);
+    max-height: 620px;
+    overflow-y: auto;
+}
+
+.demo-row {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--border-subtle);
+    border-left: 4px solid var(--border-medium);
+    padding: 12px 14px;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    color: inherit;
+}
+.demo-row:hover { background: var(--bg-sunken); }
+.demo-row[aria-current="true"] { background: var(--bg-sunken); }
+.demo-row.s-EXECUTING { border-left-color: var(--color-cyan); }
+.demo-row.s-AWAITING_APPROVAL { border-left-color: var(--color-amber); }
+.demo-row.s-BLOCKED { border-left-color: var(--color-red); }
+.demo-row.s-COMPLETED { border-left-color: var(--color-blue); }
+.demo-row.s-CLOSED { border-left-color: var(--border-strong); }
+
+.demo-row-top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.demo-id { font-size: 0.75rem; letter-spacing: 0.08em; opacity: 0.7; }
+.demo-row-title { display: block; margin: 6px 0 8px; font-family: var(--font-sans); }
+.demo-row-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+.demo-detail { max-height: 620px; overflow-y: auto; }
+.demo-stage { border-bottom: 1px solid var(--border-subtle); padding: 14px 16px; }
+.demo-stage:last-child { border-bottom: 0; }
+.demo-stage > h4 {
+    margin: 0 0 10px;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.demo-stage > h4::before {
+    content: attr(data-step);
+    border: 1px solid var(--border-medium);
+    padding: 1px 5px;
+    color: var(--color-cyan);
+}
+
+.demo-title { font-size: 1.15rem; font-weight: 700; margin: 0 0 4px; }
+.demo-desc { margin: 0 0 10px; opacity: 0.85; }
+.demo-kv { display: grid; grid-template-columns: minmax(110px, auto) 1fr; gap: 4px 14px; margin: 0; font-size: 0.85rem; }
+.demo-kv dt { font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.6; padding-top: 3px; }
+.demo-kv dd { margin: 0; overflow-wrap: anywhere; }
+
+.demo-item { border-left: 2px solid var(--border-medium); padding: 6px 0 6px 10px; margin-bottom: 8px; }
+.demo-sub { display: block; font-size: 0.78rem; opacity: 0.7; overflow-wrap: anywhere; }
+.demo-tag, .demo-badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: 1px solid var(--border-medium);
+    padding: 1px 6px;
+}
+.demo-badge { border-style: dashed; color: var(--color-amber); }
+
+.demo-state {
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border: 1px solid currentColor;
+    padding: 1px 6px;
+    white-space: nowrap;
+}
+.demo-state.s-EXECUTING { color: var(--color-cyan); }
+.demo-state.s-AWAITING_APPROVAL { color: var(--color-amber); }
+.demo-state.s-BLOCKED { color: var(--color-red); }
+.demo-state.s-COMPLETED { color: var(--color-blue); }
+.demo-state.s-CLOSED { opacity: 0.7; }
+
+.demo-status { font-size: 0.72rem; letter-spacing: 0.06em; white-space: nowrap; }
+.demo-status.st-PASS, .demo-status.st-passed { color: var(--color-blue); }
+.demo-status.st-FAIL, .demo-status.st-failed { color: var(--color-red); }
+.demo-status.st-PENDING { color: var(--color-amber); }
+.demo-status.st-EXPIRED { color: var(--color-red); }
+.demo-status.st-claimed { color: var(--color-amber); }
+.demo-status.st-DELEGATED_AUTHORITY_ALLOW { color: var(--color-blue); }
+.demo-status.st-ENVELOPE_EXPIRED, .demo-status.st-DENIED_BY_ENVELOPE { color: var(--color-red); }
+.demo-status.st-ENVELOPE_ABSENT { color: var(--color-amber); }
+
+.demo-banner { border: 1px solid currentColor; padding: 8px 10px; margin: 0 0 10px; font-size: 0.8rem; letter-spacing: 0.06em; }
+.demo-banner.env-DELEGATED_AUTHORITY_ALLOW { color: var(--color-blue); }
+.demo-banner.env-ENVELOPE_EXPIRED, .demo-banner.env-DENIED_BY_ENVELOPE { color: var(--color-red); }
+.demo-banner.env-ENVELOPE_ABSENT { color: var(--color-amber); }
+
+.demo-gate { display: flex; justify-content: space-between; gap: 10px; }
+
+.demo-step { display: flex; gap: 10px; align-items: baseline; padding: 3px 0; }
+.demo-marker { width: 1.8em; flex: none; opacity: 0.6; }
+.demo-step.p-complete .demo-marker { color: var(--color-blue); }
+.demo-step.p-active .demo-marker { color: var(--color-cyan); }
+.demo-step.p-failed .demo-marker { color: var(--color-red); }
+.demo-step.p-skipped { opacity: 0.55; text-decoration: line-through; }
+
+.demo-verify {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: space-between;
+    align-items: baseline;
+    border-left: 3px solid var(--border-medium);
+    padding: 6px 0 6px 10px;
+    margin-bottom: 6px;
+}
+.demo-verify.v-passed { border-left-color: var(--color-blue); }
+.demo-verify.v-failed { border-left-color: var(--color-red); }
+.demo-verify.v-claimed { border-left-color: var(--color-amber); }
+.demo-claim { display: block; color: var(--color-amber); font-size: 0.76rem; }
+
+.demo-outcome { font-size: 1.1rem; font-weight: 700; letter-spacing: 0.04em; margin: 0; }
+.demo-outcome.o-task_completed { color: var(--color-blue); }
+.demo-outcome.o-task_failed { color: var(--color-red); }
+.demo-outcome.o-pending { opacity: 0.6; }
+
+.demo-timeline { border-left: 1px solid var(--border-medium); margin-left: 5px; }
+.demo-event { display: flex; gap: 12px; padding: 4px 0 4px 12px; font-size: 0.82rem; }
+.demo-at { flex: none; opacity: 0.6; font-size: 0.75rem; }
+.demo-who { opacity: 0.7; font-size: 0.78rem; margin-left: 6px; }
+
+/* Section 08 markup referenced these but they were never defined. */
+.qa-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+}
+.qa-item {
+    background: var(--bg-sunken);
+    border: 1px solid var(--border-subtle);
+    border-left: 3px solid var(--color-cyan);
+    padding: 14px 16px;
+}
+.qa-item h3 { margin-top: 0; font-size: 0.95rem; }
+.qa-item p:last-child { margin-bottom: 0; }
+
+@media (max-width: 820px) {
+    .demo-split { grid-template-columns: minmax(0, 1fr); }
+    .demo-list { border-right: 0; border-bottom: 1px solid var(--border-medium); max-height: 320px; }
+    .demo-kv { grid-template-columns: minmax(0, 1fr); }
+    .demo-kv dt { padding-top: 8px; }
+}
