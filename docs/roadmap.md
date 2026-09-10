@@ -40,9 +40,11 @@ rendered.
 From [the dogfooding findings](dogfooding.md), in order of impact:
 
 1. **Module support in the bytecode target.** The single largest constraint.
-   `backend/server.howl` is one 665-line file and `frontend/app.howl` is 824,
-   because `module`/`use`/`import`/`export` are all unsupported there. Nothing
-   about HowlBoard grows comfortably until this exists.
+   `backend/server.howl` is one 665-line file because `module`/`use`/`export`
+   are unsupported there. The browser tier does not have this problem — modules
+   work for the JavaScript backend, and the interface is split across
+   `app.howl` and `mission_view.howl` — which makes the gap on the bytecode
+   target, the tier the security story rests on, the more conspicuous.
 2. **Dict key enumeration (`map_keys`).** Its absence changed a public API
    shape: `/api/projects` returns a list of records rather than a keyed object
    purely because a HowlFrame client cannot iterate an object's keys.

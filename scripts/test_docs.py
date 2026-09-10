@@ -72,7 +72,28 @@ def main():
             "run `make pages-data`",
         )
 
-    # 6. The demo must not claim to be live.
+    # 6. The published showcase must be the compiled artifact, not hand-written
+    #    JavaScript, and must actually be present for GitHub Pages to serve.
+    demo_js = ROOT / "docs" / "demo.js"
+    check("published demo is compiled from docs/demo.howl", demo_js.exists(), "run `make build`")
+    if demo_js.exists():
+        compiled = demo_js.read_text()
+        check(
+            "published demo carries HowlFrame provenance",
+            "//line demo.howl:" in compiled,
+            "docs/demo.js does not look like HowlFrame output",
+        )
+        check(
+            "published demo shares the application's renderer",
+            "view_render_detail" in compiled,
+            "demo.js does not import mission_view.howl",
+        )
+        check(
+            "published demo offers no mutating actions",
+            "approve_mission" not in compiled and "advance_mission" not in compiled,
+        )
+
+    # 7. The demo must not claim to be live.
     check(
         "published demo is labelled read-only",
         "read-only" in index.lower() or "static" in index.lower(),

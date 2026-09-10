@@ -7,65 +7,21 @@
 
 (web_app
 
+  (use "mission_view.howl" as view)
+
   (defun api_url (path)
     (return (str_join (list "http://localhost:8080" path) ""))
   )
 
   ; No HTML-escaping primitive exists, so escaping is built from str_split and
   ; str_join. The ampersand pass must run first or the later passes double-encode.
-  (defun esc (s)
-    (let (out (to_string s))
-      (do
-        (set out (str_join (str_split out "&") "&amp;"))
-        (set out (str_join (str_split out "<") "&lt;"))
-        (set out (str_join (str_split out ">") "&gt;"))
-        (set out (str_join (str_split out "\"") "&quot;"))
-        (return out)
-      )
-    )
-  )
 
-  (defun ago (ts)
-    (type_hint ts "int")
-    (let (delta (- (time_now) (to_int ts)))
-      (let (out "just now")
-        (do
-          (if (< delta 0) (set delta 0) (do))
-          (if (< delta 60)
-            (set out "just now")
-            (if (< delta 3600)
-              (set out (str_join (list (to_string (to_int (/ delta 60))) "m ago") ""))
-              (if (< delta 86400)
-                (set out (str_join (list (to_string (to_int (/ delta 3600))) "h ago") ""))
-                (set out (str_join (list (to_string (to_int (/ delta 86400))) "d ago") ""))
-              )
-            )
-          )
-          (return out)
-        )
-      )
-    )
-  )
 
-  (defun state_pill (st)
-    (return (str_join (list "<span class=\"state state-" (call esc st) "\">" (call esc st) "</span>") ""))
-  )
 
-  (defun provenance_badge (p)
-    (let (cls "badge")
-      (let (out "")
-        (do
-          (if (= p "DEMO") (set cls "badge demo") (do))
-          (if (= p "LEDGER") (set cls "badge ledger") (do))
-          (if (= (to_string p) "")
-            (set out "")
-            (set out (str_join (list "<span class=\"" cls "\">" (call esc p) "</span>") ""))
-          )
-          (return out)
-        )
-      )
-    )
-  )
+
+
+
+
 
   ; ------------------------------------------------------------ stat header
 
@@ -103,513 +59,33 @@
 
   ; --------------------------------------------------------- mission list
 
-  (defun render_row (m)
-    (type_hint m "dict")
-    (let (id (to_string (map_get m "id")))
-      (let (st (to_string (map_get m "state")))
-        (let (html "")
-          (do
-            (set html (str_join (list
-              "<button type=\"button\" class=\"mission-row s-" (call esc st) "\""
-              " onclick=\"window.open_mission('" (call esc id) "')\">") ""))
-            (set html (str_join (list html
-              "<span class=\"row-top\"><span class=\"mid\">" (call esc id) "</span>"
-              (call state_pill st) "</span>") ""))
-            (set html (str_join (list html
-              "<span class=\"title\">" (call esc (map_get m "title")) "</span>") ""))
-            (set html (str_join (list html "<span class=\"row-meta\">") ""))
-            (set html (str_join (list html
-              "<span class=\"tag\">" (call esc (map_get m "project")) "</span>") ""))
-            (set html (str_join (list html
-              "<span class=\"tag\">" (call esc (map_get m "priority")) "</span>") ""))
-            (let (ex (to_string (map_get m "executor")))
-              (if (= ex "")
-                (set html (str_join (list html "<span class=\"tag\">unassigned</span>") ""))
-                (set html (str_join (list html "<span class=\"tag\">" (call esc ex) "</span>") ""))
-              )
-            )
-            (set html (str_join (list html
-              "<span class=\"status status-" (call esc (map_get m "envelope_status")) "\">"
-              (call esc (map_get m "envelope_status")) "</span>") ""))
-            (set html (str_join (list html (call provenance_badge (map_get m "provenance"))) ""))
-            (set html (str_join (list html "</span></button>") ""))
-            (return html)
-          )
-        )
-      )
-    )
-  )
+
 
   ; ------------------------------------------------- mission detail spine
 
-  (defun stage_mission (m)
-    (type_hint m "dict")
-    (let (html "<div class=\"stage\"><h3 data-step=\"01\">Mission</h3>")
-      (do
-        (set html (str_join (list html
-          "<p class=\"detail-title\">" (call esc (map_get m "title")) "</p>") ""))
-        (set html (str_join (list html
-          "<p class=\"detail-desc\">" (call esc (map_get m "description")) "</p>") ""))
-        (set html (str_join (list html "<dl class=\"kv\">") ""))
-        (set html (str_join (list html "<dt>Identifier</dt><dd>" (call esc (map_get m "id")) "</dd>") ""))
-        (set html (str_join (list html "<dt>Workstream</dt><dd>" (call esc (map_get m "project")) "</dd>") ""))
-        (set html (str_join (list html "<dt>State</dt><dd>" (call state_pill (to_string (map_get m "state"))) "</dd>") ""))
-        (set html (str_join (list html "<dt>Priority</dt><dd>" (call esc (map_get m "priority")) "</dd>") ""))
-        (set html (str_join (list html "<dt>Risk</dt><dd>" (call esc (map_get m "risk_level")) "</dd>") ""))
-        (set html (str_join (list html "<dt>Class</dt><dd>" (call esc (map_get m "task_class")) "</dd>") ""))
-        (set html (str_join (list html "<dt>Updated</dt><dd>" (call ago (map_get m "updated_at")) "</dd>") ""))
-        (set html (str_join (list html "<dt>Provenance</dt><dd>" (call provenance_badge (map_get m "provenance")) "</dd>") ""))
-        (set html (str_join (list html "</dl></div>") ""))
-        (return html)
-      )
-    )
-  )
 
-  (defun stage_evidence (m)
-    (type_hint m "dict")
-    (let (items (map_get m "evidence"))
-      (let (html "<div class=\"stage\"><h3 data-step=\"02\">Evidence</h3>")
-        (do
-          (if (= (to_string items) "")
-            (set html (str_join (list html "<p class=\"item-sub\">No evidence recorded.</p>") ""))
-            (if (= (list_len items) 0)
-              (set html (str_join (list html "<p class=\"item-sub\">No evidence recorded.</p>") ""))
-              (for e items
-                (let (block "<div class=\"item\">")
-                  (do
-                    (set block (str_join (list block
-                      "<span class=\"item-head\"><span class=\"tag\">" (call esc (map_get e "type"))
-                      "</span><strong>" (call esc (map_get e "ref")) "</strong></span>") ""))
-                    (set block (str_join (list block
-                      "<span class=\"item-sub\">" (call esc (map_get e "description")) "</span>") ""))
-                    (set block (str_join (list block
-                      "<span class=\"item-sub\">source " (call esc (map_get e "source"))
-                      " &middot; " (call esc (map_get e "fingerprint"))
-                      " &middot; " (call ago (map_get e "collected_at")) "</span>") ""))
-                    (set html (str_join (list html block "</div>") ""))
-                  )
-                )
-              )
-            )
-          )
-          (return (str_join (list html "</div>") ""))
-        )
-      )
-    )
-  )
 
-  (defun stage_reasoning (m)
-    (type_hint m "dict")
-    (let (r (map_get m "reasoning"))
-      (let (html "<div class=\"stage\"><h3 data-step=\"03\">Decision</h3>")
-        (do
-          (if (= (to_string r) "")
-            (set html (str_join (list html "<p class=\"item-sub\">No decision record.</p>") ""))
-            (do
-              (set html (str_join (list html "<dl class=\"kv\">") ""))
-              (set html (str_join (list html "<dt>Problem</dt><dd>" (call esc (map_get r "problem")) "</dd>") ""))
-              (let (obs (map_get r "observations"))
-                (if (= (to_string obs) "")
-                  (do)
-                  (let (acc "")
-                    (do
-                      (for o obs (set acc (str_join (list acc "<div class=\"item-sub\">&bull; " (call esc o) "</div>") "")))
-                      (set html (str_join (list html "<dt>Observations</dt><dd>" acc "</dd>") ""))
-                    )
-                  )
-                )
-              )
-              (let (asm (map_get r "assumptions"))
-                (if (= (to_string asm) "")
-                  (do)
-                  (let (acc "")
-                    (do
-                      (for a asm (set acc (str_join (list acc "<div class=\"item-sub\">&bull; " (call esc a) "</div>") "")))
-                      (set html (str_join (list html "<dt>Assumptions</dt><dd>" acc "</dd>") ""))
-                    )
-                  )
-                )
-              )
-              (let (opts (map_get r "options"))
-                (if (= (to_string opts) "")
-                  (do)
-                  (let (acc "")
-                    (do
-                      (for o opts
-                        (set acc (str_join (list acc
-                          "<div class=\"item\"><strong>" (call esc (map_get o "option")) "</strong>"
-                          "<span class=\"item-sub\">" (call esc (map_get o "assessment")) "</span></div>") ""))
-                      )
-                      (set html (str_join (list html "<dt>Options</dt><dd>" acc "</dd>") ""))
-                    )
-                  )
-                )
-              )
-              (set html (str_join (list html "<dt>Selected</dt><dd><strong>" (call esc (map_get r "selected")) "</strong></dd>") ""))
-              (set html (str_join (list html "<dt>Rationale</dt><dd>" (call esc (map_get r "rationale")) "</dd>") ""))
-              (set html (str_join (list html "<dt>Confidence</dt><dd>" (call esc (map_get r "confidence")) "</dd>") ""))
-              (set html (str_join (list html "<dt>Decided by</dt><dd>" (call esc (map_get r "decided_by")) "</dd>") ""))
-              (set html (str_join (list html "</dl>") ""))
-            )
-          )
-          (return (str_join (list html "</div>") ""))
-        )
-      )
-    )
-  )
 
-  (defun stage_authority (m)
-    (type_hint m "dict")
-    (let (a (map_get m "authority"))
-      (let (env (to_string (map_get m "envelope_status")))
-        (let (html "<div class=\"stage\"><h3 data-step=\"04\">Authority</h3>")
-          (do
-            (set html (str_join (list html
-              "<p class=\"authority-banner env-" (call esc env) "\">" (call esc env) "</p>") ""))
-            (if (= (to_string a) "")
-              (set html (str_join (list html "<p class=\"item-sub\">No authority record.</p>") ""))
-              (do
-                (set html (str_join (list html "<dl class=\"kv\">") ""))
-                (set html (str_join (list html "<dt>Decision</dt><dd>" (call esc (map_get a "decision")) "</dd>") ""))
-                (set html (str_join (list html "<dt>Reason</dt><dd>" (call esc (map_get a "reason")) "</dd>") ""))
-                (set html (str_join (list html "<dt>Digest</dt><dd>" (call esc (map_get a "digest")) "</dd>") ""))
-                (let (gates (map_get a "gates"))
-                  (if (= (to_string gates) "")
-                    (do)
-                    (let (acc "")
-                      (do
-                        (for g gates
-                          (set acc (str_join (list acc
-                            "<div class=\"item-head\"><span>" (call esc (map_get g "name")) "</span>"
-                            "<span class=\"status status-" (call esc (map_get g "status")) "\">"
-                            (call esc (map_get g "status")) "</span></div>") ""))
-                        )
-                        (set html (str_join (list html "<dt>Gates</dt><dd>" acc "</dd>") ""))
-                      )
-                    )
-                  )
-                )
-                (let (ap (map_get a "approval"))
-                  (if (= (to_string ap) "")
-                    (set html (str_join (list html
-                      "<dt>Approval</dt><dd class=\"item-sub\">No approval on record.</dd>") ""))
-                    (do
-                      (set html (str_join (list html
-                        "<dt>Approver</dt><dd>" (call esc (map_get ap "approver")) "</dd>") ""))
-                      (set html (str_join (list html
-                        "<dt>Issued</dt><dd>" (call ago (map_get ap "issued_at")) "</dd>") ""))
-                      (if (= env "ENVELOPE_EXPIRED")
-                        (set html (str_join (list html
-                          "<dt>Expiry</dt><dd class=\"status status-EXPIRED\">Lapsed "
-                          (call ago (map_get ap "expires_at")) "</dd>") ""))
-                        (set html (str_join (list html
-                          "<dt>Expiry</dt><dd>Valid, expires in "
-                          (to_string (to_int (/ (- (to_int (map_get ap "expires_at")) (time_now)) 60)))
-                          " min</dd>") ""))
-                      )
-                    )
-                  )
-                )
-                (set html (str_join (list html "</dl>") ""))
-              )
-            )
-            (return (str_join (list html "</div>") ""))
-          )
-        )
-      )
-    )
-  )
 
-  (defun stage_plan (m)
-    (type_hint m "dict")
-    (let (steps (map_get m "plan"))
-      (let (html "<div class=\"stage\"><h3 data-step=\"05\">Plan</h3>")
-        (do
-          (if (= (to_string steps) "")
-            (set html (str_join (list html "<p class=\"item-sub\">No plan recorded.</p>") ""))
-            (for s steps
-              (let (st (to_string (map_get s "state")))
-                (let (marker "[ ]")
-                  (do
-                    (if (= st "complete") (set marker "[x]") (do))
-                    (if (= st "active") (set marker "[>]") (do))
-                    (if (= st "failed") (set marker "[!]") (do))
-                    (if (= st "skipped") (set marker "[-]") (do))
-                    (set html (str_join (list html
-                      "<div class=\"plan-step p-" (call esc st) "\">"
-                      "<span class=\"marker\">" marker "</span>"
-                      "<span><span>" (call esc (map_get s "action")) "</span>"
-                      "<span class=\"item-sub\"> " (call esc (map_get s "owner"))
-                      " &middot; " (call esc st) "</span></span></div>") ""))
-                  )
-                )
-              )
-            )
-          )
-          (return (str_join (list html "</div>") ""))
-        )
-      )
-    )
-  )
 
-  (defun stage_executor (m)
-    (type_hint m "dict")
-    (let (html "<div class=\"stage\"><h3 data-step=\"06\">Executor</h3><dl class=\"kv\">")
-      (do
-        (let (ex (to_string (map_get m "executor")))
-          (if (= ex "")
-            (set html (str_join (list html "<dt>Assigned</dt><dd class=\"item-sub\">None; work has not been dispatched.</dd>") ""))
-            (set html (str_join (list html "<dt>Assigned</dt><dd>" (call esc ex) "</dd>") ""))
-          )
-        )
-        (set html (str_join (list html
-          "<dt>Recommended</dt><dd>" (call esc (map_get m "recommended_executor")) "</dd>") ""))
-        (let (ov (map_get m "is_override"))
-          (if (= (to_string ov) "true")
-            (set html (str_join (list html
-              "<dt>Override</dt><dd class=\"status status-PENDING\">Yes &mdash; "
-              (call esc (map_get m "override_reason")) "</dd>") ""))
-            (set html (str_join (list html "<dt>Override</dt><dd>No</dd>") ""))
-          )
-        )
-        (return (str_join (list html "</dl></div>") ""))
-      )
-    )
-  )
 
-  (defun stage_execution (m)
-    (type_hint m "dict")
-    (let (x (map_get m "execution"))
-      (let (html "<div class=\"stage\"><h3 data-step=\"07\">Execution</h3>")
-        (do
-          (if (= (to_string x) "")
-            (set html (str_join (list html "<p class=\"item-sub\">Execution has not started.</p>") ""))
-            (do
-              (set html (str_join (list html "<dl class=\"kv\">") ""))
-              (let (started (to_int (map_get x "started_at")))
-                (if (= started 0)
-                  (set html (str_join (list html "<dt>Started</dt><dd class=\"item-sub\">Never started.</dd>") ""))
-                  (set html (str_join (list html "<dt>Started</dt><dd>" (call ago started) "</dd>") ""))
-                )
-              )
-              (let (op (to_string (map_get x "current_operation")))
-                (if (= op "")
-                  (do)
-                  (set html (str_join (list html "<dt>Current</dt><dd>" (call esc op) "</dd>") ""))
-                )
-              )
-              (set html (str_join (list html "<dt>Retries</dt><dd>" (to_string (map_get x "retries")) "</dd>") ""))
-              (let (rec (map_get x "delta"))
-                (if (= (to_string rec) "")
-                  (do)
-                  (do
-                    (let (mods (map_get rec "files_modified"))
-                      (let (acc "")
-                        (do
-                          (if (= (to_string mods) "")
-                            (do)
-                            (for f mods (set acc (str_join (list acc "<div class=\"item-sub\">" (call esc f) "</div>") "")))
-                          )
-                          (if (= acc "") (set acc "<span class=\"item-sub\">none</span>") (do))
-                          (set html (str_join (list html "<dt>Files changed</dt><dd>" acc "</dd>") ""))
-                        )
-                      )
-                    )
-                    (set html (str_join (list html
-                      "<dt>Diff</dt><dd>+" (to_string (map_get rec "insertions"))
-                      " / -" (to_string (map_get rec "deletions")) "</dd>") ""))
-                    (let (unexpected (map_get rec "unexpected"))
-                      (let (n 0)
-                        (do
-                          (if (= (to_string unexpected) "") (do) (set n (list_len unexpected)))
-                          (if (= n 0)
-                            (set html (str_join (list html
-                              "<dt>Unexpected changes</dt><dd class=\"status status-passed\">None detected</dd>") ""))
-                            (let (acc "")
-                              (do
-                                (for f unexpected (set acc (str_join (list acc "<div>" (call esc f) "</div>") "")))
-                                (set html (str_join (list html
-                                  "<dt>Unexpected changes</dt><dd class=\"status status-failed\">" acc "</dd>") ""))
-                              )
-                            )
-                          )
-                        )
-                      )
-                    )
-                  )
-                )
-              )
-              (let (receipt (map_get x "receipt"))
-                (if (= (to_string receipt) "")
-                  (do)
-                  (do
-                    (let (err (to_string (map_get receipt "error_message")))
-                      (if (= err "")
-                        (do)
-                        (set html (str_join (list html
-                          "<dt>Error</dt><dd class=\"status status-failed\">" (call esc err) "</dd>") ""))
-                      )
-                    )
-                    (let (rb (to_string (map_get receipt "rollback_status")))
-                      (if (= rb "")
-                        (do)
-                        (set html (str_join (list html "<dt>Rollback</dt><dd>" (call esc rb) "</dd>") ""))
-                      )
-                    )
-                  )
-                )
-              )
-              (let (recovery (map_get x "recovery_actions"))
-                (if (= (to_string recovery) "")
-                  (do)
-                  (if (= (list_len recovery) 0)
-                    (do)
-                    (let (acc "")
-                      (do
-                        (for r recovery (set acc (str_join (list acc "<div class=\"item-sub\">&bull; " (call esc r) "</div>") "")))
-                        (set html (str_join (list html "<dt>Recovery</dt><dd>" acc "</dd>") ""))
-                      )
-                    )
-                  )
-                )
-              )
-              (set html (str_join (list html "</dl>") ""))
-            )
-          )
-          (return (str_join (list html "</div>") ""))
-        )
-      )
-    )
-  )
+
+
+
+
+
+
+
 
   ; A "claimed" result is an assertion the agent made that nothing independently
   ; confirmed. It is rendered as its own status, never folded into "passed".
-  (defun stage_verification (m)
-    (type_hint m "dict")
-    (let (vs (map_get m "verification"))
-      (let (html "<div class=\"stage\"><h3 data-step=\"08\">Verification</h3>")
-        (do
-          (if (= (to_string vs) "")
-            (set html (str_join (list html "<p class=\"item-sub\">No verification has run.</p>") ""))
-            (if (= (list_len vs) 0)
-              (set html (str_join (list html "<p class=\"item-sub\">No verification has run.</p>") ""))
-              (for v vs
-                (let (st (to_string (map_get v "status")))
-                  (let (block "")
-                    (do
-                      (set block (str_join (list
-                        "<div class=\"verification-row v-" (call esc st) "\">"
-                        "<span><span>" (call esc (map_get v "name")) "</span>") ""))
-                      (if (= st "claimed")
-                        (set block (str_join (list block
-                          "<span class=\"claim-warning\">Claimed by the agent; not independently verified.</span>") ""))
-                        (do))
-                      (let (digest (to_string (map_get v "output_digest")))
-                        (if (= digest "")
-                          (do)
-                          (set block (str_join (list block
-                            "<span class=\"item-sub\">" (call esc digest) "</span>") ""))
-                        )
-                      )
-                      (set block (str_join (list block
-                        "</span><span class=\"status status-" (call esc st) "\">" (call esc st)
-                        " (exit " (to_string (map_get v "exit_code")) ")</span></div>") ""))
-                      (set html (str_join (list html block) ""))
-                    )
-                  )
-                )
-              )
-            )
-          )
-          (return (str_join (list html "</div>") ""))
-        )
-      )
-    )
-  )
 
-  (defun stage_outcome (m)
-    (type_hint m "dict")
-    (let (o (to_string (map_get m "outcome")))
-      (let (html "<div class=\"stage\"><h3 data-step=\"09\">Outcome</h3>")
-        (do
-          (if (= o "")
-            (set html (str_join (list html
-              "<p class=\"outcome-line outcome-pending\">Not yet reached</p>") ""))
-            (set html (str_join (list html
-              "<p class=\"outcome-line outcome-" (call esc o) "\">" (call esc o) "</p>") ""))
-          )
-          (return (str_join (list html "</div>") ""))
-        )
-      )
-    )
-  )
 
-  (defun stage_timeline (m)
-    (type_hint m "dict")
-    (let (events (map_get m "timeline"))
-      (let (html "<div class=\"stage\"><h3 data-step=\"10\">Audit timeline</h3><div class=\"timeline\">")
-        (do
-          (if (= (to_string events) "")
-            (set html (str_join (list html "<p class=\"item-sub\">No recorded history.</p>") ""))
-            (for e events
-              (let (action (to_string (map_get e "action")))
-                (let (cls "timeline-row")
-                  (do
-                    (if (= action "human_approval") (set cls "timeline-row t-human") (do))
-                    (if (= action "human_rejection") (set cls "timeline-row t-human") (do))
-                    (if (= action "human_decision_requested") (set cls "timeline-row t-human") (do))
-                    (if (= action "human_boundary_triggered") (set cls "timeline-row t-human") (do))
-                    (if (= action "task_failed") (set cls "timeline-row t-fail") (do))
-                    (if (= action "task_completed") (set cls "timeline-row t-done") (do))
-                    (set html (str_join (list html
-                      "<div class=\"" cls "\"><span class=\"at\">" (call ago (map_get e "timestamp")) "</span>"
-                      "<span><span class=\"what\">" (call esc action) "</span>"
-                      "<span class=\"who\"> " (call esc (map_get e "actor")) "</span>") ""))
-                    (let (detail (to_string (map_get e "detail")))
-                      (if (= detail "")
-                        (do)
-                        (set html (str_join (list html
-                          "<span class=\"item-sub\">" (call esc detail) "</span>") ""))
-                      )
-                    )
-                    (set html (str_join (list html "</span></div>") ""))
-                  )
-                )
-              )
-            )
-          )
-          (return (str_join (list html "</div></div>") ""))
-        )
-      )
-    )
-  )
 
-  (defun render_detail (m)
-    (type_hint m "dict")
-    (let (html "")
-      (do
-        (set html (str_join (list html (call stage_mission m)) ""))
-        (set html (str_join (list html (call stage_evidence m)) ""))
-        (set html (str_join (list html (call stage_reasoning m)) ""))
-        (set html (str_join (list html (call stage_authority m)) ""))
-        (set html (str_join (list html (call stage_plan m)) ""))
-        (set html (str_join (list html (call stage_executor m)) ""))
-        (set html (str_join (list html (call stage_execution m)) ""))
-        (set html (str_join (list html (call stage_verification m)) ""))
-        (set html (str_join (list html (call stage_outcome m)) ""))
-        (set html (str_join (list html (call stage_timeline m)) ""))
-        (let (id (call esc (map_get m "id")))
-          (set html (str_join (list html
-            "<div class=\"stage\"><div class=\"actions\">"
-            "<button type=\"button\" onclick=\"window.approve_mission('" id "')\">Grant approval</button>"
-            "<button type=\"button\" onclick=\"window.reject_mission('" id "')\">Reject</button>"
-            "<button type=\"button\" onclick=\"window.advance_mission('" id "')\">Advance to EXECUTING</button>"
-            "</div></div>") ""))
-        )
-        (return html)
-      )
-    )
-  )
+
+
+
+
 
   ; ------------------------------------------------------------- data loads
 
@@ -643,10 +119,10 @@
                   (let (name (to_string (map_get row "name")))
                     (do
                       (set html (str_join (list html
-                        "<span class=\"project-chip\">" (call esc name)
+                        "<span class=\"project-chip\">" (call view/esc name)
                         "<span class=\"count\">" (to_string (map_get row "count")) "</span></span>") ""))
                       (set options (str_join (list options
-                        "<option value=\"" (call esc name) "\">" (call esc name) "</option>") ""))
+                        "<option value=\"" (call view/esc name) "\">" (call view/esc name) "</option>") ""))
                     )
                   )
                 )
@@ -685,7 +161,7 @@
                         )
                         (if keep
                           (do
-                            (set html (str_join (list html (call render_row m)) ""))
+                            (set html (str_join (list html (call view/render_row m)) ""))
                             (set shown (+ shown 1))
                           )
                           (do)
@@ -717,10 +193,10 @@
           (do
             (for e (map_get d "events")
               (set html (str_join (list html
-                "<div class=\"timeline-row\"><span class=\"at\">" (call ago (map_get e "timestamp"))
-                "</span><span><span class=\"what\">" (call esc (map_get e "action"))
-                "</span><span class=\"who\"> " (call esc (map_get e "actor"))
-                " &middot; " (call esc (map_get e "mission_id")) "</span></span></div>") ""))
+                "<div class=\"timeline-row\"><span class=\"at\">" (call view/ago (map_get e "timestamp"))
+                "</span><span><span class=\"what\">" (call view/esc (map_get e "action"))
+                "</span><span class=\"who\"> " (call view/esc (map_get e "actor"))
+                " &middot; " (call view/esc (map_get e "mission_id")) "</span></span></div>") ""))
             )
             (set_html (dom_query "#feed") (str_join (list html "</div>") ""))
           )
@@ -736,7 +212,19 @@
       (try_let (m (parse_json Any raw))
         (catch perr (call show_error "Mission response was not valid JSON."))
         (do
-          (set_html (dom_query "#mission-detail") (call render_detail m))
+          (let (html (call view/render_detail m))
+          (do
+            (let (id (call view/esc (map_get m "id")))
+              (set html (str_join (list html
+                "<div class=\"stage\"><div class=\"actions\">"
+                "<button type=\"button\" onclick=\"window.approve_mission('" id "')\">Grant approval</button>"
+                "<button type=\"button\" onclick=\"window.reject_mission('" id "')\">Reject</button>"
+                "<button type=\"button\" onclick=\"window.advance_mission('" id "')\">Advance to EXECUTING</button>"
+                "</div></div>") ""))
+            )
+            (set_html (dom_query "#mission-detail") html)
+          )
+        )
           (set_text (dom_query "#detail-heading") (str_join (list "Mission detail / " id) ""))
         )
       )

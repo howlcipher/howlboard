@@ -4,7 +4,9 @@
 
 ```
 Browser
-  frontend/app.howl  --(HowlFrame JS backend)-->  frontend/app.js
+  frontend/app.howl ─┬─(HowlFrame JS backend)──>  frontend/app.js
+  frontend/mission_view.howl  (module, shared)
+  docs/demo.howl    ─┴─(HowlFrame JS backend)──>  docs/demo.js  (published, read-only)
         |  fetch, JSON bodies only
         v
 HowlFrame bytecode VM   -allow-caps network,database,filesystem
@@ -28,10 +30,13 @@ the compiler; `server.hfbc` and `app.js` are its output.
 
 ## Decisions
 
-**One backend file.** The bytecode target does not support `module`, `use`,
-`import` or `export` (see the construct coverage matrix). `server.howl` is
-therefore a single file by necessity, not by preference. This is the largest
-constraint on growth and is recorded as the top framework gap.
+**One backend file, but not one frontend file.** The bytecode target does not
+support `module`, `use` or `export`, so `server.howl` is a single file by
+necessity. The JavaScript backend *does* support modules, so the browser tier is
+split: `mission_view.howl` exports the mission renderers and is imported by both
+the application and the published showcase. That the published demo renders
+through the same module as the product is the reason it cannot drift from it —
+which is exactly how the previous demo drifted.
 
 **Authority is computed, not stored.** `envelope_status` runs on every read and
 compares the approval's `expires_at` against the clock. Storing a frozen

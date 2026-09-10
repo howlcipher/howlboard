@@ -266,11 +266,24 @@ pass is to report it with evidence, not to attempt it opportunistically.
 
 Ordered by how much they cost.
 
-**1. No module system in the bytecode target.** `module`, `use`, `import` and
-`export` are all unsupported, so `backend/server.howl` is necessarily one
-665-line file. This is the single biggest limit on building anything larger.
-The frontend is worse at 824 lines. Splitting by concern is impossible, so the
-only available structure is `defun` ordering within one file.
+**1. No module system in the bytecode target.** `module`, `use` and `export` are
+unsupported there, so `backend/server.howl` is necessarily one 665-line file and
+the only available structure is `defun` ordering. This is the single biggest
+limit on building anything larger on the bytecode target.
+
+*Correction, found while auditing this document:* an earlier draft claimed the
+same was true of the browser tier. It is not. **Modules work for the JavaScript
+backend**, and the construct coverage matrix's "No" for `module`/`use` refers
+only to the standalone bytecode column. Acting on that correction,
+`frontend/mission_view.howl` is now a real module exporting the shared mission
+renderers, imported by both `frontend/app.howl` and `docs/demo.howl`. The
+published showcase is consequently compiled from `.howl` like everything else,
+and it renders through the same code as the product rather than a hand-written
+copy that can drift.
+
+That correction sharpens the finding rather than softening it: the gap is
+specifically that the *bytecode* target — the one the platform's security story
+is built on — is the tier that cannot be decomposed.
 
 **2. No dict key enumeration.** `store_keys` solved enumeration for stores;
 dicts have no equivalent `map_keys`. This is not cosmetic: it changed the
@@ -365,6 +378,7 @@ absence check (`is_nil` for stores, `= ""` for dicts) is a correctness trap
 rather than an inconvenience.
 
 The honest summary is that HowlFrame is a credible bounded-execution platform
-with a language that is not yet comfortable for application-sized programs.
-This exercise made it meaningfully better in both respects, and the reason it
-could is that the application was real enough to fail against.
+with a language that is not yet comfortable for application-sized programs on
+its most important target. This exercise made it meaningfully better in both
+respects, and the reason it could is that the application was real enough to
+fail against — including once, late, against a claim in this very document.

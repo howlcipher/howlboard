@@ -10,6 +10,11 @@ build:
 	$(HOWLFRAME_BIN) frontend/app.howl -o frontend
 	$(HOWLFRAME_BIN) -compile-bc backend/server.howl -o backend/server.hfbc
 	$(HOWLFRAME_BIN) -compile-bc tools/ledger_import/ledger_import.howl -o build/ledger_import.hfbc
+	@# The published showcase is compiled from .howl too, importing the same
+	@# rendering module as the interface. The JS backend names its output
+	@# app.js, so it is renamed to sit beside the site's own script.js.
+	$(HOWLFRAME_BIN) docs/demo.howl -o docs
+	mv docs/app.js docs/demo.js
 
 ## Black-box contract tests against the real compiled bytecode server.
 test: build
@@ -42,6 +47,6 @@ pages-data:
 	cp data/fixtures/missions.json docs/missions.json
 
 clean:
-	rm -f frontend/app.js frontend/app.test.js backend/server.hfbc
+	rm -f frontend/app.js frontend/app.test.js backend/server.hfbc docs/demo.js docs/app.js
 	rm -rf build
 	rm -f howlboard_missions.json howlboard_timeline.json

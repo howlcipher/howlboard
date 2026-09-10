@@ -1,0 +1,85 @@
+; Read-only mission-control showcase for the published GitHub Pages site.
+;
+; Compiled through the HowlFrame JavaScript backend, exactly like the running
+; application's interface, and importing the same rendering module — so the
+; published demo cannot drift from the product it illustrates.
+;
+; There is no server behind this page. It reads missions.json, a copy of the
+; same fixtures the application loads through POST /api/seed, and offers no
+; approvals, rejections or state transitions.
+
+(web_app
+
+  (use "../frontend/mission_view.howl" as view)
+
+  (defun show_missions (doc)
+    (type_hint doc "dict")
+    (type_hint return "void")
+    (let (missions (map_get doc "missions"))
+      (let (html "")
+        (do
+          (for m missions
+            (do
+              (map_set m "envelope_status" (call view/envelope_status m))
+              (set html (str_join (list html (call view/render_row m)) ""))
+            )
+          )
+          (set_html (dom_query "#demo-list") html)
+        )
+      )
+    )
+  )
+
+  ; Named open_mission because the rendered rows call window.open_mission:
+  ; a top-level function declaration in a classic script is already a global.
+  ; (export ...) is a module construct and does not create one.
+  (defun open_mission (id)
+    (type_hint return "void")
+    (try_let (raw (fetch "missions.json" "GET"))
+      (catch err (set_text (dom_query "#demo-detail") "Demo data could not be loaded."))
+      (try_let (doc (parse_json Any raw))
+        (catch perr (set_text (dom_query "#demo-detail") "Demo data was not valid JSON."))
+        (let (events (map_get doc "events"))
+          (for m (map_get doc "missions")
+            (if (= (to_string (map_get m "id")) id)
+              (let (mine (list))
+                (do
+                  (for e events
+                    (if (= (to_string (map_get e "mission_id")) id) (append mine e) (do))
+                  )
+                  (map_set m "timeline" mine)
+                  (map_set m "envelope_status" (call view/envelope_status m))
+                  (set_html (dom_query "#demo-detail") (call view/render_detail m))
+                )
+              )
+              (do)
+            )
+          )
+        )
+      )
+    )
+  )
+
+  (defun load_demo ()
+    (type_hint return "void")
+    (try_let (raw (fetch "missions.json" "GET"))
+      (catch err (set_text (dom_query "#demo-list") "Demo data could not be loaded."))
+      (try_let (doc (parse_json Any raw))
+        (catch perr (set_text (dom_query "#demo-list") "Demo data was not valid JSON."))
+        (do
+          (call show_missions doc)
+          (let (missions (map_get doc "missions"))
+            (if (> (list_len missions) 0)
+              (let (first (list_get missions 0))
+                (call open_mission (to_string (map_get first "id")))
+              )
+              (do)
+            )
+          )
+        )
+      )
+    )
+  )
+
+  (call load_demo)
+)
