@@ -620,9 +620,25 @@ body {
    INTERACTIVE DEMO BOARD
    ========================================================================== */
 
+/* Demo-scoped status colours. The site's shared accent tokens sit between
+   3.0 and 3.7 against this surface, which is fine for headings but not for the
+   0.65-0.72rem status text the showcase uses, so the demo defines its own. */
+:root {
+  --demo-ok: #0878a5;
+  --demo-warn: #996500;
+  --demo-bad: #c23825;
+  --demo-info: #0e7891;
+}
+[data-theme="dark"] {
+  --demo-ok: #0a9bd6;
+  --demo-warn: #c78300;
+  --demo-bad: #e06d5e;
+  --demo-info: #129ec0;
+}
+
 .demo-board-wrap {
   margin: 1.5rem 0;
-  background: var(--bg-sunken);
+  background: var(--bg-panel);
   border: 1px solid var(--border-medium);
   padding: 1rem;
 }
@@ -1055,7 +1071,7 @@ tr:hover td {
    ========================================================================= */
 
 .demo-note {
-    border-left: 3px solid var(--color-amber);
+    border-left: 3px solid var(--demo-warn);
     padding-left: 12px;
     font-size: 0.9rem;
 }
@@ -1087,10 +1103,10 @@ tr:hover td {
 }
 .demo-row:hover { background: var(--bg-sunken); }
 .demo-row[aria-current="true"] { background: var(--bg-sunken); }
-.demo-row.s-EXECUTING { border-left-color: var(--color-cyan); }
-.demo-row.s-AWAITING_APPROVAL { border-left-color: var(--color-amber); }
-.demo-row.s-BLOCKED { border-left-color: var(--color-red); }
-.demo-row.s-COMPLETED { border-left-color: var(--color-blue); }
+.demo-row.s-EXECUTING { border-left-color: var(--demo-info); }
+.demo-row.s-AWAITING_APPROVAL { border-left-color: var(--demo-warn); }
+.demo-row.s-BLOCKED { border-left-color: var(--demo-bad); }
+.demo-row.s-COMPLETED { border-left-color: var(--demo-ok); }
 .demo-row.s-CLOSED { border-left-color: var(--border-strong); }
 
 .demo-row-top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
@@ -1115,7 +1131,7 @@ tr:hover td {
     content: attr(data-step);
     border: 1px solid var(--border-medium);
     padding: 1px 5px;
-    color: var(--color-cyan);
+    color: var(--demo-info);
 }
 
 .demo-title { font-size: 1.15rem; font-weight: 700; margin: 0 0 4px; }
@@ -1134,7 +1150,7 @@ tr:hover td {
     border: 1px solid var(--border-medium);
     padding: 1px 6px;
 }
-.demo-badge { border-style: dashed; color: var(--color-amber); }
+.demo-badge { border-style: dashed; color: var(--demo-warn); }
 
 .demo-state {
     font-size: 0.65rem;
@@ -1144,34 +1160,34 @@ tr:hover td {
     padding: 1px 6px;
     white-space: nowrap;
 }
-.demo-state.s-EXECUTING { color: var(--color-cyan); }
-.demo-state.s-AWAITING_APPROVAL { color: var(--color-amber); }
-.demo-state.s-BLOCKED { color: var(--color-red); }
-.demo-state.s-COMPLETED { color: var(--color-blue); }
+.demo-state.s-EXECUTING { color: var(--demo-info); }
+.demo-state.s-AWAITING_APPROVAL { color: var(--demo-warn); }
+.demo-state.s-BLOCKED { color: var(--demo-bad); }
+.demo-state.s-COMPLETED { color: var(--demo-ok); }
 .demo-state.s-CLOSED { opacity: 0.7; }
 
 .demo-status { font-size: 0.72rem; letter-spacing: 0.06em; white-space: nowrap; }
-.demo-status.st-PASS, .demo-status.st-passed { color: var(--color-blue); }
-.demo-status.st-FAIL, .demo-status.st-failed { color: var(--color-red); }
-.demo-status.st-PENDING { color: var(--color-amber); }
-.demo-status.st-EXPIRED { color: var(--color-red); }
-.demo-status.st-claimed { color: var(--color-amber); }
-.demo-status.st-DELEGATED_AUTHORITY_ALLOW { color: var(--color-blue); }
-.demo-status.st-ENVELOPE_EXPIRED, .demo-status.st-DENIED_BY_ENVELOPE { color: var(--color-red); }
-.demo-status.st-ENVELOPE_ABSENT { color: var(--color-amber); }
+.demo-status.st-PASS, .demo-status.st-passed { color: var(--demo-ok); }
+.demo-status.st-FAIL, .demo-status.st-failed { color: var(--demo-bad); }
+.demo-status.st-PENDING { color: var(--demo-warn); }
+.demo-status.st-EXPIRED { color: var(--demo-bad); }
+.demo-status.st-claimed { color: var(--demo-warn); }
+.demo-status.st-DELEGATED_AUTHORITY_ALLOW { color: var(--demo-ok); }
+.demo-status.st-ENVELOPE_EXPIRED, .demo-status.st-DENIED_BY_ENVELOPE { color: var(--demo-bad); }
+.demo-status.st-ENVELOPE_ABSENT { color: var(--demo-warn); }
 
 .demo-banner { border: 1px solid currentColor; padding: 8px 10px; margin: 0 0 10px; font-size: 0.8rem; letter-spacing: 0.06em; }
-.demo-banner.env-DELEGATED_AUTHORITY_ALLOW { color: var(--color-blue); }
-.demo-banner.env-ENVELOPE_EXPIRED, .demo-banner.env-DENIED_BY_ENVELOPE { color: var(--color-red); }
-.demo-banner.env-ENVELOPE_ABSENT { color: var(--color-amber); }
+.demo-banner.env-DELEGATED_AUTHORITY_ALLOW { color: var(--demo-ok); }
+.demo-banner.env-ENVELOPE_EXPIRED, .demo-banner.env-DENIED_BY_ENVELOPE { color: var(--demo-bad); }
+.demo-banner.env-ENVELOPE_ABSENT { color: var(--demo-warn); }
 
 .demo-gate { display: flex; justify-content: space-between; gap: 10px; }
 
 .demo-step { display: flex; gap: 10px; align-items: baseline; padding: 3px 0; }
 .demo-marker { width: 1.8em; flex: none; opacity: 0.6; }
-.demo-step.p-complete .demo-marker { color: var(--color-blue); }
-.demo-step.p-active .demo-marker { color: var(--color-cyan); }
-.demo-step.p-failed .demo-marker { color: var(--color-red); }
+.demo-step.p-complete .demo-marker { color: var(--demo-ok); }
+.demo-step.p-active .demo-marker { color: var(--demo-info); }
+.demo-step.p-failed .demo-marker { color: var(--demo-bad); }
 .demo-step.p-skipped { opacity: 0.55; text-decoration: line-through; }
 
 .demo-verify {
@@ -1184,14 +1200,14 @@ tr:hover td {
     padding: 6px 0 6px 10px;
     margin-bottom: 6px;
 }
-.demo-verify.v-passed { border-left-color: var(--color-blue); }
-.demo-verify.v-failed { border-left-color: var(--color-red); }
-.demo-verify.v-claimed { border-left-color: var(--color-amber); }
-.demo-claim { display: block; color: var(--color-amber); font-size: 0.76rem; }
+.demo-verify.v-passed { border-left-color: var(--demo-ok); }
+.demo-verify.v-failed { border-left-color: var(--demo-bad); }
+.demo-verify.v-claimed { border-left-color: var(--demo-warn); }
+.demo-claim { display: block; color: var(--demo-warn); font-size: 0.76rem; }
 
 .demo-outcome { font-size: 1.1rem; font-weight: 700; letter-spacing: 0.04em; margin: 0; }
-.demo-outcome.o-task_completed { color: var(--color-blue); }
-.demo-outcome.o-task_failed { color: var(--color-red); }
+.demo-outcome.o-task_completed { color: var(--demo-ok); }
+.demo-outcome.o-task_failed { color: var(--demo-bad); }
 .demo-outcome.o-pending { opacity: 0.6; }
 
 .demo-timeline { border-left: 1px solid var(--border-medium); margin-left: 5px; }
@@ -1208,7 +1224,7 @@ tr:hover td {
 .qa-item {
     background: var(--bg-sunken);
     border: 1px solid var(--border-subtle);
-    border-left: 3px solid var(--color-cyan);
+    border-left: 3px solid var(--demo-info);
     padding: 14px 16px;
 }
 .qa-item h3 { margin-top: 0; font-size: 0.95rem; }

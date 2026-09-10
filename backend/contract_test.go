@@ -10,10 +10,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -27,6 +29,19 @@ func baseURL() string {
 		return override
 	}
 	return "http://localhost:8080"
+}
+
+// requireFreePort fails the test if the server port is already in use.
+func requireFreePort(t *testing.T) {
+	t.Helper()
+	address := strings.TrimPrefix(baseURL(), "http://")
+	listener, err := net.Listen("tcp", address)
+	if err != nil {
+		t.Fatalf("port %s is already in use; stop the other server first (%v)", address, err)
+	}
+	if err := listener.Close(); err != nil {
+		t.Fatalf("release probe listener on %s: %v", address, err)
+	}
 }
 
 func repoRoot(t *testing.T) string {
@@ -51,6 +66,12 @@ func startServer(t *testing.T, caps string, wantReady bool) {
 		}
 	}
 
+	// Refuse to run against somebody else's server. Without this the readiness
+	// poll below can be satisfied by a process already holding the port while
+	// our own child is still dying on bind, and the suite silently tests the
+	// wrong server with the wrong data.
+	requireFreePort(t)
+
 	cmd := exec.Command(filepath.Join(root, "howlframe_bin"),
 		"-run-bc", "-allow-caps", caps, "backend/server.hfbc")
 	cmd.Dir = root
@@ -61,16 +82,23 @@ func startServer(t *testing.T, caps string, wantReady bool) {
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("start bytecode server: %v", err)
 	}
-	t.Cleanup(func() {
-		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
-	})
-
-	// Watch for early exit as well as readiness. If the port were already held
-	// by another server this process would die on bind while the poll below
-	// still succeeded, and the suite would silently test the wrong server.
 	exited := make(chan error, 1)
 	go func() { exited <- cmd.Wait() }()
 
+	// Wait for the process to actually die, not just for the signal to be sent.
+	// Otherwise the next test's port pre-check races the kernel releasing the
+	// port this server still holds.
+	t.Cleanup(func() {
+		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+		select {
+		case <-exited:
+		case <-time.After(5 * time.Second):
+			t.Errorf("bytecode server did not exit after SIGKILL")
+		}
+	})
+
+	// Watch for early exit as well as readiness, so a server that dies during
+	// startup reports that rather than timing out.
 	deadline := time.Now().Add(20 * time.Second)
 	for time.Now().Before(deadline) {
 		select {

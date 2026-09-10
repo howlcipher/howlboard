@@ -12,7 +12,7 @@
     --edge: #1e2a1c;
     --text: #c8d4c4;
     --text-dim: #7d8c79;
-    --text-faint: #4d5a4a;
+    --text-faint: #6f816a;
 
     --phosphor: #39ff14;
     --executing: #35d6f5;
@@ -38,9 +38,9 @@ body.light-mode {
     --text-dim: #4a5158;
     --text-faint: #6f7780;
     --phosphor: #0d7a2e;
-    --executing: #087faf;
-    --awaiting: #a3700c;
-    --blocked: #c2521a;
+    --executing: #07719b;
+    --awaiting: #90630b;
+    --blocked: #b04a18;
     --failed: #b32626;
     --verifying: #6a3fb0;
     --remediating: #b3651a;
