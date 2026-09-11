@@ -75,10 +75,31 @@ operation is therefore a POST carrying a JSON body, including reads:
 `/api/missions/get` takes `{"id": "..."}`. `req_method` is available and is used
 for OPTIONS preflight.
 
-**Escaping is explicit.** The JS backend's `set_html` writes `innerHTML` and
-there is no escaping primitive, so `esc` is built from `str_split`/`str_join`
-and applied to every interpolated value. Verified against an injection attempt
-in the contract suite's sibling checks.
+**Escaping is explicit, and context decides whether it is enough.** The JS
+backend's `set_html` writes `innerHTML` and there is no escaping primitive, so
+`esc` is built from `str_split`/`str_join` and applied to every interpolated
+value. It escapes `&`, `<`, `>`, `"` and `'`.
+
+Applying it everywhere is necessary and was not sufficient. Mission rows used to
+carry `onclick="window.open_mission('<esc id>')"`, which places the value inside
+a JavaScript string literal. The HTML parser decodes entities in an attribute
+before JavaScript parses it, so an escaped quote becomes a real quote, closes the
+string, and the rest of the identifier is executed as code. Escaping the double
+quote stops an attacker leaving the attribute; nothing about HTML escaping stops
+them leaving the string.
+
+HowlProof demonstrated this against the compiled interface in a real browser, by
+seeding a mission whose identifier carried a quote and observing the injected
+expression run (HP-SEC-0007). Identifiers minted by `/api/missions/create` are
+server assigned and never carried it; `/api/seed` and the offline ledger importer
+keep whatever identifier their source document held, and the importer's source is
+projected control-plane telemetry.
+
+No value is placed inside a handler now. Identifiers live in `data-mission-id`,
+an attribute-value context where escaping the quote characters is sufficient, and
+each handler is a constant that reads the value back with `this.dataset` at click
+time. `TestHandlerAttributesInterpolateNoValues` and
+`TestEscapeFunctionCoversQuoteCharacters` fail if either half regresses.
 
 ## Capabilities
 

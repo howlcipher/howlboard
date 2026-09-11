@@ -217,9 +217,12 @@
             (let (id (call view/esc (map_get m "id")))
               (set html (str_join (list html
                 "<div class=\"stage\"><div class=\"actions\">"
-                "<button type=\"button\" onclick=\"window.approve_mission('" id "')\">Grant approval</button>"
-                "<button type=\"button\" onclick=\"window.reject_mission('" id "')\">Reject</button>"
-                "<button type=\"button\" onclick=\"window.advance_mission('" id "')\">Advance to EXECUTING</button>"
+                "<button type=\"button\" data-mission-id=\"" id "\""
+                " onclick=\"window.approve_mission(this.dataset.missionId)\">Grant approval</button>"
+                "<button type=\"button\" data-mission-id=\"" id "\""
+                " onclick=\"window.reject_mission(this.dataset.missionId)\">Reject</button>"
+                "<button type=\"button\" data-mission-id=\"" id "\""
+                " onclick=\"window.advance_mission(this.dataset.missionId)\">Advance to EXECUTING</button>"
                 "</div></div>") ""))
             )
             (set_html (dom_query "#mission-detail") html)
