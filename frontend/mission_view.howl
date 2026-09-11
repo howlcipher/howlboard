@@ -68,6 +68,7 @@
         (set out (str_join (str_split out "<") "&lt;"))
         (set out (str_join (str_split out ">") "&gt;"))
         (set out (str_join (str_split out "\"") "&quot;"))
+        (set out (str_join (str_split out "'") "&#39;"))
         (return out)
       )
     )
@@ -131,7 +132,8 @@
           (do
             (set html (str_join (list
               "<button type=\"button\" class=\"mission-row s-" (call esc st) "\""
-              " onclick=\"window.open_mission('" (call esc id) "')\">") ""))
+              " data-mission-id=\"" (call esc id) "\""
+              " onclick=\"window.open_mission(this.dataset.missionId)\">") ""))
             (set html (str_join (list html
               "<span class=\"row-top\"><span class=\"mid\">" (call esc id) "</span>"
               (call state_pill st) "</span>") ""))

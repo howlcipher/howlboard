@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"syscall"
 	"testing"
@@ -501,5 +502,62 @@ func TestDeniedCapabilityFailsClosed(t *testing.T) {
 	failure := decodeObject(t, body)
 	if failure["code"] != "CAPABILITY_DENIED" {
 		t.Fatalf("failure code = %v, want CAPABILITY_DENIED (%s)", failure["code"], body)
+	}
+}
+
+// A value placed inside a single-quoted JavaScript string in an event-handler
+// attribute is parsed as code, and HTML-entity escaping does not prevent that:
+// the HTML parser decodes the attribute before JavaScript parses it, so `&#39;`
+// becomes a real quote and closes the string. HowlProof demonstrated this against
+// the compiled interface by seeding a mission whose identifier carried a quote and
+// observing the injected expression execute in a browser (HP-SEC-0007).
+//
+// The fix was to stop putting data in handlers at all. Identifiers live in a
+// data attribute, where escaping the quote characters is sufficient, and each
+// handler is a constant that reads the value back at click time.
+//
+// This test lives in the backend package because it is the only Go package in the
+// repository and `make test` runs it; what it checks is the browser tier's source.
+func TestHandlerAttributesInterpolateNoValues(t *testing.T) {
+	root := repoRoot(t)
+	sources := []string{
+		filepath.Join(root, "frontend", "mission_view.howl"),
+		filepath.Join(root, "frontend", "app.howl"),
+		filepath.Join(root, "docs", "demo.howl"),
+	}
+	// Matches an on<event> attribute whose value is not closed before an
+	// interpolation begins: a quote ending the .howl string literal, or a call.
+	handler := regexp.MustCompile(`on[a-z]{3,15}=\\"[^\\]*'`)
+
+	for _, source := range sources {
+		content, err := os.ReadFile(source)
+		if err != nil {
+			t.Fatalf("read %s: %v", source, err)
+		}
+		for number, line := range strings.Split(string(content), "\n") {
+			if handler.MatchString(line) {
+				t.Errorf(
+					"%s:%d builds an event handler containing a quoted string; put the value "+
+						"in a data attribute and read it with this.dataset instead:\n\t%s",
+					filepath.Base(source), number+1, strings.TrimSpace(line),
+				)
+			}
+		}
+	}
+}
+
+// The escape function must cover every character that can end an attribute value
+// or a string literal, including the single quote.
+func TestEscapeFunctionCoversQuoteCharacters(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join(repoRoot(t), "frontend", "mission_view.howl"))
+	if err != nil {
+		t.Fatalf("read mission_view.howl: %v", err)
+	}
+	for character, entity := range map[string]string{
+		"&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;",
+	} {
+		if !strings.Contains(string(content), entity) {
+			t.Errorf("esc does not produce %s, so %s survives into the output", entity, character)
+		}
 	}
 }
