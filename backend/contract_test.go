@@ -54,6 +54,20 @@ func repoRoot(t *testing.T) string {
 	return root
 }
 
+func resolveHowlFrameBin(root string) string {
+	if bin := os.Getenv("HOWLFRAME_BIN"); bin != "" {
+		return bin
+	}
+	localBin := filepath.Join(root, "howlframe_bin")
+	if _, err := os.Stat(localBin); err == nil {
+		return localBin
+	}
+	if p, err := exec.LookPath("howlframe"); err == nil {
+		return p
+	}
+	return localBin
+}
+
 // startServer launches the compiled bytecode server with an explicit capability
 // grant and waits for readiness by polling, rather than sleeping a fixed
 // interval and hoping.
@@ -73,7 +87,7 @@ func startServer(t *testing.T, caps string, wantReady bool) {
 	// wrong server with the wrong data.
 	requireFreePort(t)
 
-	cmd := exec.Command(filepath.Join(root, "howlframe_bin"),
+	cmd := exec.Command(resolveHowlFrameBin(root),
 		"-run-bc", "-allow-caps", caps, "backend/server.hfbc")
 	cmd.Dir = root
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
