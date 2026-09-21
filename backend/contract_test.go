@@ -388,6 +388,10 @@ func TestMissionAPIContract(t *testing.T) {
 			{`{"title":"No project"}`, "MISSING_FIELD"},
 			{`{"title":"Bad","project":"HowlFrame","priority":"URGENT"}`, "INVALID_PRIORITY"},
 			{`{not json`, "INVALID_JSON"},
+			{`{"title":"Deps","project":"HowlBoard","depends_on":"HF-412"}`, "INVALID_DEPENDS_ON"},
+			{`{"title":"Deps","project":"HowlBoard","depends_on":{"id":"HF-412"}}`, "INVALID_DEPENDS_ON"},
+			{`{"title":"Deps","project":"HowlBoard","depends_on":[1,2]}`, "INVALID_DEPENDS_ON"},
+			{`{"title":"Deps","project":"HowlBoard","depends_on":["HF-412",true]}`, "INVALID_DEPENDS_ON"},
 		}
 		for _, testCase := range cases {
 			status, body := post(t, "/api/missions/create", testCase.payload)
@@ -430,6 +434,86 @@ func TestMissionAPIContract(t *testing.T) {
 		status, notFound := post(t, "/api/missions/get", fmt.Sprintf(`{"id":%q}`, id))
 		if status != http.StatusNotFound || notFound["error"] != "MISSION_NOT_FOUND" {
 			t.Fatalf("get deleted mission = %d %v", status, notFound)
+		}
+	})
+
+	t.Run("depends_on create round-trips through get", func(t *testing.T) {
+		status, created := post(t, "/api/missions/create",
+			`{"title":"Dependent mission","project":"HowlBoard","priority":"LOW","depends_on":["HF-412","CO-118"]}`)
+		if status != http.StatusCreated {
+			t.Fatalf("create with depends_on = %d: %v", status, created)
+		}
+		id := created["id"].(string)
+		rawDeps, ok := created["depends_on"].([]any)
+		if !ok {
+			t.Fatalf("create response depends_on is %T, want array", created["depends_on"])
+		}
+		if len(rawDeps) != 2 || rawDeps[0] != "HF-412" || rawDeps[1] != "CO-118" {
+			t.Fatalf("create response depends_on = %v", rawDeps)
+		}
+
+		got := mission(t, id)
+		roundTrip, ok := got["depends_on"].([]any)
+		if !ok {
+			t.Fatalf("get depends_on is %T, want array", got["depends_on"])
+		}
+		if len(roundTrip) != 2 || roundTrip[0] != "HF-412" || roundTrip[1] != "CO-118" {
+			t.Fatalf("get depends_on = %v, want [HF-412 CO-118]", roundTrip)
+		}
+
+		status, _ = post(t, "/api/missions/delete", fmt.Sprintf(`{"id":%q}`, id))
+		if status != http.StatusOK {
+			t.Fatalf("cleanup delete = %d", status)
+		}
+	})
+
+	t.Run("depends_on omitted and empty list mean no dependencies", func(t *testing.T) {
+		status, created := post(t, "/api/missions/create",
+			`{"title":"No deps omitted","project":"HowlBoard","priority":"LOW"}`)
+		if status != http.StatusCreated {
+			t.Fatalf("create omitted depends_on = %d: %v", status, created)
+		}
+		idOmitting := created["id"].(string)
+		omitted := mission(t, idOmitting)
+		raw, ok := omitted["depends_on"].([]any)
+		if !ok {
+			t.Fatalf("omitted depends_on stored as %T, want empty array", omitted["depends_on"])
+		}
+		if len(raw) != 0 {
+			t.Fatalf("omitted depends_on = %v, want empty", raw)
+		}
+
+		status, created = post(t, "/api/missions/create",
+			`{"title":"No deps empty","project":"HowlBoard","priority":"LOW","depends_on":[]}`)
+		if status != http.StatusCreated {
+			t.Fatalf("create empty depends_on = %d: %v", status, created)
+		}
+		idEmpty := created["id"].(string)
+		empty := mission(t, idEmpty)
+		raw, ok = empty["depends_on"].([]any)
+		if !ok || len(raw) != 0 {
+			t.Fatalf("empty depends_on = %T %v", empty["depends_on"], empty["depends_on"])
+		}
+
+		for _, id := range []string{idOmitting, idEmpty} {
+			status, _ = post(t, "/api/missions/delete", fmt.Sprintf(`{"id":%q}`, id))
+			if status != http.StatusOK {
+				t.Fatalf("cleanup delete %s = %d", id, status)
+			}
+		}
+	})
+
+	t.Run("DEMO fixture carries informational depends_on", func(t *testing.T) {
+		m := mission(t, "HP-207")
+		if m["provenance"] != "DEMO" {
+			t.Fatalf("HP-207 provenance = %v, want DEMO", m["provenance"])
+		}
+		deps, ok := m["depends_on"].([]any)
+		if !ok || len(deps) == 0 {
+			t.Fatalf("HP-207 depends_on = %v, want non-empty list", m["depends_on"])
+		}
+		if deps[0] != "HF-412" {
+			t.Fatalf("HP-207 depends_on[0] = %v, want HF-412", deps[0])
 		}
 	})
 
@@ -558,6 +642,166 @@ func TestEscapeFunctionCoversQuoteCharacters(t *testing.T) {
 	} {
 		if !strings.Contains(string(content), entity) {
 			t.Errorf("esc does not produce %s, so %s survives into the output", entity, character)
+		}
+	}
+}
+
+
+// HOWL-007: shared mission_view must show depends_on IDs when present and omit
+// the dependency block when missing or empty. Compiles a tiny harness that
+// imports the same module as app.howl and docs/demo.howl, then executes it
+// under Node with a DOM stub (the established DOM-shim style).
+func TestDependsOnRender(t *testing.T) {
+	root := repoRoot(t)
+	outDir := t.TempDir()
+	bin := filepath.Join(root, "howlframe_bin")
+	cmd := exec.Command(bin, filepath.Join(root, "frontend", "render_harness.howl"), "-o", outDir)
+	cmd.Dir = root
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("compile render harness: %v\n%s", err, output)
+	}
+	jsPath := filepath.Join(outDir, "app.js")
+	if _, err := os.Stat(jsPath); err != nil {
+		t.Fatalf("compiled harness missing: %v", err)
+	}
+
+	script := `
+const fs = require("fs");
+const code = fs.readFileSync(process.argv[1], "utf8");
+global.window = global;
+global.document = {
+  querySelector: () => ({
+    addEventListener: () => {},
+    classList: { toggle: () => {} },
+    textContent: "",
+    innerHTML: "",
+  }),
+};
+eval(code);
+(async () => {
+  const withDeps = await render_detail_html({
+    id: "HB-TEST",
+    title: "T",
+    description: "D",
+    project: "P",
+    state: "CREATED",
+    priority: "LOW",
+    risk_level: "LOW",
+    task_class: "unclassified",
+    provenance: "DEMO",
+    updated_at: 0,
+    depends_on: ["HF-412", "CO-118"],
+    authority: {},
+    evidence: [],
+    reasoning: {},
+    plan: [],
+    execution: {},
+    verification: [],
+    outcome: "",
+    executor: "",
+  });
+  if (!withDeps.includes("depends-block")) {
+    console.error("missing depends-block when depends_on present");
+    process.exit(1);
+  }
+  if (!withDeps.includes("HF-412") || !withDeps.includes("CO-118")) {
+    console.error("dependency IDs not rendered");
+    process.exit(1);
+  }
+  if (!withDeps.includes("Informational only")) {
+    console.error("missing informational copy");
+    process.exit(1);
+  }
+  if (/onclick=/.test(withDeps) && /depends_on/.test(withDeps.split("onclick=")[1] || "")) {
+    console.error("depends_on leaked into handler JS");
+    process.exit(1);
+  }
+  // XSS: escaped in text, not raw
+  const xss = await render_detail_html({
+    id: "HB-XSS",
+    title: "T",
+    description: "D",
+    project: "P",
+    state: "CREATED",
+    priority: "LOW",
+    risk_level: "LOW",
+    task_class: "unclassified",
+    provenance: "DEMO",
+    updated_at: 0,
+    depends_on: ["<script>alert(1)</script>"],
+    authority: {},
+    evidence: [],
+    reasoning: {},
+    plan: [],
+    execution: {},
+    verification: [],
+    outcome: "",
+    executor: "",
+  });
+  if (xss.includes("<script>alert(1)</script>")) {
+    console.error("dependency ID was not HTML-escaped");
+    process.exit(1);
+  }
+  if (!xss.includes("&lt;script&gt;")) {
+    console.error("expected escaped script markers in dependency ID");
+    process.exit(1);
+  }
+
+  for (const deps of [undefined, [], null, ""]) {
+    const mission = {
+      id: "HB-NONE",
+      title: "T",
+      description: "D",
+      project: "P",
+      state: "CREATED",
+      priority: "LOW",
+      risk_level: "LOW",
+      task_class: "unclassified",
+      provenance: "DEMO",
+      updated_at: 0,
+      authority: {},
+      evidence: [],
+      reasoning: {},
+      plan: [],
+      execution: {},
+      verification: [],
+      outcome: "",
+      executor: "",
+    };
+    if (deps !== undefined) mission.depends_on = deps;
+    const html = await render_detail_html(mission);
+    if (html.includes("depends-block") || html.includes("Depends on")) {
+      console.error("dependency block shown for empty/missing depends_on:", deps);
+      process.exit(1);
+    }
+  }
+  console.log("ok");
+})().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
+`
+	node := exec.Command("node", "-e", script, jsPath)
+	node.Dir = root
+	output, err := node.CombinedOutput()
+	if err != nil {
+		t.Fatalf("render harness failed: %v\n%s", err, output)
+	}
+	if !strings.Contains(string(output), "ok") {
+		t.Fatalf("render harness output = %q", output)
+	}
+}
+
+// Source-level guard: depends_on values must not be interpolated into handler JS.
+func TestDependsOnNeverInHandlerJS(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join(repoRoot(t), "frontend", "mission_view.howl"))
+	if err != nil {
+		t.Fatalf("read mission_view.howl: %v", err)
+	}
+	for number, line := range strings.Split(string(content), "\n") {
+		if strings.Contains(line, "onclick=") && strings.Contains(line, "depends") {
+			t.Errorf("%s:%d puts dependency data into an event handler:\n\t%s",
+				"mission_view.howl", number+1, strings.TrimSpace(line))
 		}
 	}
 }
