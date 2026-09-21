@@ -32,11 +32,11 @@ Building the outbound leg is the first real step toward that.
 **Pagination and search.** Required before the interface can face a real ledger
 rather than a slice.
 
-**Dependencies beyond informational links.** `depends_on` can be set on create
-and is rendered in the shared mission view as informational IDs only. Still out
-of scope: execution ordering, cross-mission authority, cycle detection,
-HowlPlane scheduling, completion gates, ChangeOps approval propagation, and
-graph visualization.
+**Dependencies beyond navigable informational links.** `depends_on` can be set
+on create and is rendered in the shared mission view as navigable informational
+controls. Still out of scope: execution ordering, cross-mission authority,
+cycle detection, HowlPlane scheduling, completion gates, ChangeOps approval
+propagation, and graph visualization.
 
 ## Framework work this depends on
 

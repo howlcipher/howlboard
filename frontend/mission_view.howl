@@ -183,7 +183,8 @@
         (set html (str_join (list html "<dt>Provenance</dt><dd>" (call provenance_badge (map_get m "provenance")) "</dd>") ""))
         (set html (str_join (list html "</dl>") ""))
         ; Informational depends_on only. Empty or missing → no dependency block.
-        ; IDs go through esc into HTML text; never into handler JavaScript.
+        ; IDs go through esc into data-mission-id; handler source stays a constant
+        ; (same pattern as mission rows). Never concatenate IDs into JavaScript.
         (let (deps (map_get m "depends_on"))
           (if (= (to_string deps) "")
             (do)
@@ -196,8 +197,13 @@
                   "<p class=\"item-sub\">Informational only — does not imply ordering, blocking, approval, or scheduling.</p>"
                   "<ul class=\"depends-list\">") ""))
                 (for dep deps
-                  (set html (str_join (list html
-                    "<li><code>" (call esc dep) "</code></li>") ""))
+                  (do
+                    (set html (str_join (list html
+                      "<li><button type=\"button\" class=\"depends-link\""
+                      " data-mission-id=\"" (call esc dep) "\""
+                      " onclick=\"window.open_mission(this.dataset.missionId)\">"
+                      (call esc dep) "</button></li>") ""))
+                  )
                 )
                 (set html (str_join (list html "</ul></div>") ""))
               )

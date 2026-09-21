@@ -647,8 +647,8 @@ func TestEscapeFunctionCoversQuoteCharacters(t *testing.T) {
 }
 
 
-// HOWL-007: shared mission_view must show depends_on IDs when present and omit
-// the dependency block when missing or empty. Compiles a tiny harness that
+// HOWL-007/008: shared mission_view must show navigable depends_on controls when
+// present and omit the dependency block when missing or empty. Compiles a tiny harness that
 // imports the same module as app.howl and docs/demo.howl, then executes it
 // under Node with a DOM stub (the established DOM-shim style).
 func TestDependsOnRender(t *testing.T) {
@@ -712,6 +712,23 @@ eval(code);
     console.error("missing informational copy");
     process.exit(1);
   }
+  // HOWL-008: navigable controls matching mission-row pattern
+  if (!withDeps.includes("depends-link")) {
+    console.error("missing depends-link control");
+    process.exit(1);
+  }
+  if (!withDeps.includes('data-mission-id="HF-412"') || !withDeps.includes('data-mission-id="CO-118"')) {
+    console.error("dependency IDs missing from data-mission-id");
+    process.exit(1);
+  }
+  if (!withDeps.includes('onclick="window.open_mission(this.dataset.missionId)"')) {
+    console.error("missing constant open_mission handler on dependency control");
+    process.exit(1);
+  }
+  if (/onclick="[^"]*HF-412/.test(withDeps) || /onclick='[^']*HF-412/.test(withDeps)) {
+    console.error("dependency ID interpolated into onclick handler source");
+    process.exit(1);
+  }
   if (/onclick=/.test(withDeps) && /depends_on/.test(withDeps.split("onclick=")[1] || "")) {
     console.error("depends_on leaked into handler JS");
     process.exit(1);
@@ -744,6 +761,44 @@ eval(code);
   }
   if (!xss.includes("&lt;script&gt;")) {
     console.error("expected escaped script markers in dependency ID");
+    process.exit(1);
+  }
+  if (!xss.includes('data-mission-id="&lt;script&gt;alert(1)&lt;/script&gt;"')) {
+    console.error("hostile ID not escaped inside data-mission-id");
+    process.exit(1);
+  }
+  // Quote-bearing hostile ID must not break out of the attribute
+  const hostile = await render_detail_html({
+    id: "HB-QUOTE",
+    title: "T",
+    description: "D",
+    project: "P",
+    state: "CREATED",
+    priority: "LOW",
+    risk_level: "LOW",
+    task_class: "unclassified",
+    provenance: "DEMO",
+    updated_at: 0,
+    depends_on: ['"><img src=x onerror=alert(1)>', "O'Brien"],
+    authority: {},
+    evidence: [],
+    reasoning: {},
+    plan: [],
+    execution: {},
+    verification: [],
+    outcome: "",
+    executor: "",
+  });
+  if (hostile.includes('data-mission-id=""><img')) {
+    console.error("quote-bearing ID broke out of data-mission-id");
+    process.exit(1);
+  }
+  if (!hostile.includes("&quot;") || !hostile.includes("&#39;")) {
+    console.error("expected escaped quotes in hostile dependency IDs");
+    process.exit(1);
+  }
+  if (/onclick="[^"]*&quot;/.test(hostile) || /onclick="[^"]*O'Brien/.test(hostile)) {
+    console.error("hostile ID reached onclick handler source");
     process.exit(1);
   }
 
@@ -802,6 +857,82 @@ func TestDependsOnNeverInHandlerJS(t *testing.T) {
 		if strings.Contains(line, "onclick=") && strings.Contains(line, "depends") {
 			t.Errorf("%s:%d puts dependency data into an event handler:\n\t%s",
 				"mission_view.howl", number+1, strings.TrimSpace(line))
+		}
+	}
+}
+
+// HOWL-008: app open_mission get body must use encode_json, not string-concat JSON.
+func TestOpenMissionUsesEncodeJSON(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join(repoRoot(t), "frontend", "app.howl"))
+	if err != nil {
+		t.Fatalf("read app.howl: %v", err)
+	}
+	src := string(content)
+	start := strings.Index(src, "(defun open_mission")
+	if start < 0 {
+		t.Fatal("open_mission not found in app.howl")
+	}
+	rest := src[start:]
+	end := strings.Index(rest[1:], "(defun ")
+	if end < 0 {
+		t.Fatal("could not bound open_mission in app.howl")
+	}
+	body := rest[:end+1]
+	if !strings.Contains(body, "encode_json") {
+		t.Error("open_mission must build the get body with encode_json")
+	}
+	if strings.Contains(body, `{"id":"`) || strings.Contains(body, `"{\"id\":\""`) {
+		t.Error("open_mission must not string-concatenate JSON around the mission id")
+	}
+	if !strings.Contains(body, "Mission not found") {
+		t.Error("open_mission must surface an honest not-found failure")
+	}
+}
+
+// HOWL-008: demo open_mission must report missing targets (fixture path).
+func TestDemoOpenMissionReportsMissing(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join(repoRoot(t), "docs", "demo.howl"))
+	if err != nil {
+		t.Fatalf("read demo.howl: %v", err)
+	}
+	src := string(content)
+	if !strings.Contains(src, "Mission not found") {
+		t.Error("demo open_mission must show an honest not-found state")
+	}
+	if !strings.Contains(src, `(use "../frontend/mission_view.howl" as view)`) &&
+		!strings.Contains(src, `(use "../frontend/mission_view.howl"`) {
+		// Allow either exact form used by the demo.
+		if !strings.Contains(src, "mission_view.howl") {
+			t.Error("demo must keep sharing mission_view.howl")
+		}
+	}
+}
+
+// HOWL-008: depends controls must use esc'd data-mission-id + constant handler.
+func TestDependsOnControlUsesDataAttrPattern(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join(repoRoot(t), "frontend", "mission_view.howl"))
+	if err != nil {
+		t.Fatalf("read mission_view.howl: %v", err)
+	}
+	src := string(content)
+	if !strings.Contains(src, "depends-link") {
+		t.Error("mission_view must render depends-link controls")
+	}
+	// Howl source escapes quotes as \"; match the attribute name + esc call + constant handler.
+	if !strings.Contains(src, "data-mission-id=") || !strings.Contains(src, "(call esc dep)") {
+		t.Error("depends controls must place esc(dep) in data-mission-id")
+	}
+	if !strings.Contains(src, "window.open_mission(this.dataset.missionId)") {
+		t.Error("depends controls must use the constant open_mission handler")
+	}
+	// Inert <code>-only deps must be gone.
+	if strings.Contains(src, "<li><code>") && strings.Contains(src, "depends") {
+		// Narrow: the depends loop must not emit inert code-only items.
+		for number, line := range strings.Split(src, "\n") {
+			if strings.Contains(line, "<li><code>") && strings.Contains(line, "esc dep") {
+				t.Errorf("mission_view.howl:%d still renders inert code-only depends_on:\n\t%s",
+					number+1, strings.TrimSpace(line))
+			}
 		}
 	}
 }

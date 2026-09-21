@@ -300,6 +300,26 @@ button:focus-visible, select:focus-visible, [tabindex]:focus-visible, a:focus-vi
 .mission-row.s-COMPLETED { border-left-color: var(--completed); }
 .mission-row.s-CLOSED { border-left-color: var(--closed); }
 
+.depends-block { margin-top: 12px; }
+.depends-label {
+    margin: 0 0 4px;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+}
+.depends-list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.depends-link {
+    font-family: var(--mono, ui-monospace, monospace);
+    font-size: 12px;
+    padding: 4px 8px;
+    border: 1px solid var(--edge);
+    background: var(--panel-2);
+    color: var(--phosphor, var(--text));
+    cursor: pointer;
+}
+.depends-link:hover { border-color: var(--phosphor); color: var(--phosphor); }
+
 .badge {
     font-size: 10px;
     letter-spacing: 0.1em;

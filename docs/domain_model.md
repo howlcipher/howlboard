@@ -18,7 +18,7 @@ Stored at `mission:<id>` in `file://howlboard_missions.json`.
 | `provenance` | HowlBoard — `DEMO`, `LEDGER`, or `OPERATOR` |
 | `origin` | HowlBoard — `control_plane` or `test_fixture`, set on import |
 | `outcome` | HowlPlane ledger terminal actions |
-| `depends_on` | HowlBoard — optional list of mission ID strings; informational only (not ordering, blocking, approval, or scheduling) |
+| `depends_on` | HowlBoard — optional list of mission ID strings; informational and navigable in the shared mission view (not ordering, blocking, approval, or scheduling) |
 
 ## Lifecycle
 
