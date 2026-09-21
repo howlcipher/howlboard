@@ -524,6 +524,9 @@
           "started_at": 1788887752,
           "finished_at": 1788890852
         }
+      ],
+      "depends_on": [
+        "HF-412"
       ]
     },
     {

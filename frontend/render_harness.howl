@@ -1,0 +1,12 @@
+; HOWL-007 render check harness. Compiles the shared mission_view module and
+; exports render helpers for Node-based contract tests. Not part of the product UI.
+(web_app
+  (use "mission_view.howl" as view)
+
+  (defun render_detail_html (m)
+    (type_hint m "dict")
+    (return (call view/render_detail m))
+  )
+
+  (export "render_detail_html" render_detail_html)
+)

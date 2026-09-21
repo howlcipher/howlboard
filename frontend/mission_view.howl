@@ -181,7 +181,30 @@
         (set html (str_join (list html "<dt>Class</dt><dd>" (call esc (map_get m "task_class")) "</dd>") ""))
         (set html (str_join (list html "<dt>Updated</dt><dd>" (call ago (map_get m "updated_at")) "</dd>") ""))
         (set html (str_join (list html "<dt>Provenance</dt><dd>" (call provenance_badge (map_get m "provenance")) "</dd>") ""))
-        (set html (str_join (list html "</dl></div>") ""))
+        (set html (str_join (list html "</dl>") ""))
+        ; Informational depends_on only. Empty or missing → no dependency block.
+        ; IDs go through esc into HTML text; never into handler JavaScript.
+        (let (deps (map_get m "depends_on"))
+          (if (= (to_string deps) "")
+            (do)
+            (if (= (list_len deps) 0)
+              (do)
+              (do
+                (set html (str_join (list html
+                  "<div class=\"depends-block\">"
+                  "<p class=\"depends-label\">Depends on</p>"
+                  "<p class=\"item-sub\">Informational only — does not imply ordering, blocking, approval, or scheduling.</p>"
+                  "<ul class=\"depends-list\">") ""))
+                (for dep deps
+                  (set html (str_join (list html
+                    "<li><code>" (call esc dep) "</code></li>") ""))
+                )
+                (set html (str_join (list html "</ul></div>") ""))
+              )
+            )
+          )
+        )
+        (set html (str_join (list html "</div>") ""))
         (return html)
       )
     )

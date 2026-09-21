@@ -99,6 +99,34 @@ def main():
         "read-only" in index.lower() or "static" in index.lower(),
     )
 
+
+    # 8. HOWL-007: docs must describe shipped informational depends_on, not the old gap.
+    limitations = (ROOT / "docs" / "limitations.md").read_text()
+    roadmap = (ROOT / "docs" / "roadmap.md").read_text()
+    domain = (ROOT / "docs" / "domain_model.md").read_text()
+    mission_view = (ROOT / "frontend" / "mission_view.howl").read_text()
+    check(
+        "limitations no longer claims depends_on is unrendered",
+        "neither populated nor rendered" not in limitations
+        and "neither populated nor" not in limitations,
+    )
+    check(
+        "limitations states informational-only depends_on",
+        "informational" in limitations.lower() and "depends_on" in limitations,
+    )
+    check(
+        "roadmap no longer claims depends_on is unrendered",
+        "neither populated nor" not in roadmap and "informational" in roadmap.lower(),
+    )
+    check(
+        "domain_model documents depends_on",
+        "`depends_on`" in domain and "informational" in domain.lower(),
+    )
+    check(
+        "shared mission view renders depends_on",
+        "depends_on" in mission_view and "Informational only" in mission_view,
+    )
+
     print()
     if FAILURES:
         print(f"{len(FAILURES)} documentation check(s) failed")
