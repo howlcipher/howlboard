@@ -207,28 +207,43 @@
 
   (defun open_mission (id)
     (type_hint return "void")
-    (try_let (raw (fetch (call api_url "/api/missions/get") "POST" (str_join (list "{\"id\":\"" id "\"}") "")))
+    ; Lookup body via encode_json — never string-concatenate JSON around the id.
+    (try_let (raw (fetch (call api_url "/api/missions/get") "POST" (encode_json (dict ("id" id)))))
       (catch err (call show_error "Cannot load that mission."))
       (try_let (m (parse_json Any raw))
         (catch perr (call show_error "Mission response was not valid JSON."))
         (do
-          (let (html (call view/render_detail m))
-          (do
-            (let (id (call view/esc (map_get m "id")))
-              (set html (str_join (list html
-                "<div class=\"stage\"><div class=\"actions\">"
-                "<button type=\"button\" data-mission-id=\"" id "\""
-                " onclick=\"window.approve_mission(this.dataset.missionId)\">Grant approval</button>"
-                "<button type=\"button\" data-mission-id=\"" id "\""
-                " onclick=\"window.reject_mission(this.dataset.missionId)\">Reject</button>"
-                "<button type=\"button\" data-mission-id=\"" id "\""
-                " onclick=\"window.advance_mission(this.dataset.missionId)\">Advance to EXECUTING</button>"
-                "</div></div>") ""))
+          (let (err_code (to_string (map_get m "error")))
+            (if (= err_code "")
+              (do
+                (call show_error "")
+                (let (html (call view/render_detail m))
+                  (do
+                    (let (mid (call view/esc (map_get m "id")))
+                      (set html (str_join (list html
+                        "<div class=\"stage\"><div class=\"actions\">"
+                        "<button type=\"button\" data-mission-id=\"" mid "\""
+                        " onclick=\"window.approve_mission(this.dataset.missionId)\">Grant approval</button>"
+                        "<button type=\"button\" data-mission-id=\"" mid "\""
+                        " onclick=\"window.reject_mission(this.dataset.missionId)\">Reject</button>"
+                        "<button type=\"button\" data-mission-id=\"" mid "\""
+                        " onclick=\"window.advance_mission(this.dataset.missionId)\">Advance to EXECUTING</button>"
+                        "</div></div>") ""))
+                    )
+                    (set_html (dom_query "#mission-detail") html)
+                    (set_text (dom_query "#detail-heading") (str_join (list "Mission detail / " id) ""))
+                  )
+                )
+              )
+              (do
+                ; Honest missing/unknown target — never silent no-op.
+                (call show_error (str_join (list "Mission not found: " id) ""))
+                (set_html (dom_query "#mission-detail")
+                  (str_join (list "<p class=\"item-sub\">Mission not found.</p>") ""))
+                (set_text (dom_query "#detail-heading") (str_join (list "Mission detail / " id) ""))
+              )
             )
-            (set_html (dom_query "#mission-detail") html)
           )
-        )
-          (set_text (dom_query "#detail-heading") (str_join (list "Mission detail / " id) ""))
         )
       )
     )

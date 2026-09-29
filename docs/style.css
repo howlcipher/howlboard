@@ -1143,6 +1143,33 @@ tr:hover td {
 .demo-board-wrap .mission-row.s-COMPLETED { border-left-color: var(--demo-ok); }
 .demo-board-wrap .mission-row.s-CLOSED { border-left-color: var(--border-strong); }
 
+.demo-board-wrap .depends-block { margin-top: 12px; }
+.demo-board-wrap .depends-label {
+  margin: 0 0 4px;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+.demo-board-wrap .depends-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.demo-board-wrap .depends-link {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  padding: 4px 8px;
+  border: 1px solid var(--border-medium);
+  background: var(--bg-sunken);
+  color: var(--demo-info);
+  cursor: pointer;
+}
+.demo-board-wrap .depends-link:hover { border-color: var(--demo-info); }
+
 .demo-board-wrap .row-top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
 .demo-board-wrap .mid { font-size: 0.75rem; letter-spacing: 0.08em; opacity: 0.7; }
 .demo-board-wrap .title { display: block; margin: 6px 0 8px; font-family: var(--font-sans); }

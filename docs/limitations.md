@@ -70,9 +70,10 @@ flows through the real interface; they are not a rich view of past work.
 - No search.
 - The audit feed is capped only by what the server returns.
 - Mission `depends_on` is informational only: create/API and the shared mission
-  view can set and show dependency IDs, but HowlBoard does not order work,
-  enforce authority across missions, detect cycles, gate completion, schedule
-  via HowlPlane, propagate ChangeOps approvals, or draw a dependency graph.
+  view can set and show dependency IDs as navigable controls that open the
+  referenced mission, but HowlBoard does not order work, enforce authority
+  across missions, detect cycles, gate completion, schedule via HowlPlane,
+  propagate ChangeOps approvals, or draw a dependency graph.
 - The dashboard aggregates agent activity but does not display it; the data is
   in `/api/dashboard` under `agents`.
 

@@ -127,6 +127,27 @@ def main():
         "depends_on" in mission_view and "Informational only" in mission_view,
     )
 
+    # 9. HOWL-008: navigable informational depends_on; shared controls + encode_json open path.
+    app = (ROOT / "frontend" / "app.howl").read_text()
+    check(
+        "limitations mentions navigable depends_on",
+        "navigable" in limitations.lower() and "depends_on" in limitations,
+    )
+    check(
+        "roadmap describes navigable informational deps",
+        "navigable" in roadmap.lower() and "informational" in roadmap.lower(),
+    )
+    check(
+        "mission_view depends controls use data-mission-id + constant handler",
+        "depends-link" in mission_view
+        and "data-mission-id" in mission_view
+        and "window.open_mission(this.dataset.missionId)" in mission_view,
+    )
+    check(
+        "app open_mission uses encode_json for get body",
+        "encode_json" in app and "(defun open_mission" in app,
+    )
+
     print()
     if FAILURES:
         print(f"{len(FAILURES)} documentation check(s) failed")
