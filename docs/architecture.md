@@ -23,6 +23,12 @@ tools/ledger_import/ledger_import.howl  (cli_app)
         |
 HowlPlane control plane   logs/control_plane/evidence_ledger.jsonl
                           schema ai.evidence_entry/v1
+        |
+        |  redacted snapshot, read on demand
+        v
+data/factory/status/remote-snapshot.json
+                          schema howlplane.factory.status/v1
+                          Plane artifact factory/status/remote-snapshot.json
 ```
 
 Nothing in this diagram is hand-written Go or JavaScript. `howlframe_bin` is

@@ -148,6 +148,25 @@ def main():
         "encode_json" in app and "(defun open_mission" in app,
     )
 
+    # 10. Factory surface stays a projection plus an exact Pending preview.
+    factory_demo = (ROOT / "docs" / "factory_demo.md").read_text()
+    check(
+        "server exposes factory status and pending-row routes",
+        '/api/factory/status' in server and '/api/factory/pending-row' in server,
+    )
+    check(
+        "factory demo describes a missing snapshot and an exact Pending row",
+        "SNAPSHOT_ABSENT" in factory_demo and "Pending" in factory_demo,
+    )
+    check(
+        "factory demo does not add a second admit path",
+        "owner_direction" in factory_demo and "does not start" in factory_demo.lower(),
+    )
+    check(
+        "limitations keep factory start out of Board",
+        "factory start" in limitations and "Pending" in limitations,
+    )
+
     print()
     if FAILURES:
         print(f"{len(FAILURES)} documentation check(s) failed")

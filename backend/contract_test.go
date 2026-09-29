@@ -936,3 +936,329 @@ func TestDependsOnControlUsesDataAttrPattern(t *testing.T) {
 		}
 	}
 }
+
+// Factory surface: redacted status projection plus an exact Pending row.
+// Mirrors BacklogSource row parsing enough to lock the admit contract.
+
+const goldenPendingRow = "| 91011 | [Publish redacted factory status](#91011-publish-redacted-factory-status) | Pending | 2.0 (4x1/2) | Remote operators cannot see the live campaign. |"
+
+const goldenPendingDetail = "### 91011. Publish redacted factory status\n\nSymptom: operators who are not on the Factory host cannot see campaign state.\n\nDeterministic acceptance: `factory/status/remote-snapshot.json` contains `campaign_id`, `state`, `current_dispatch`, blockers, `last_tick_at`, and `last_error`, and the file contains no tokens or absolute host home paths."
+
+func parseRankedRow(row string) (id, title, status, score, rationale, anchor string, err error) {
+	if !regexp.MustCompile(`^\|\s*\d+\s*\|`).MatchString(row) {
+		return "", "", "", "", "", "", fmt.Errorf("row does not match BacklogSource row pattern")
+	}
+	parts := strings.Split(row, "|")
+	if len(parts) < 3 {
+		return "", "", "", "", "", "", fmt.Errorf("row has no cells")
+	}
+	var cells []string
+	for _, cell := range parts[1 : len(parts)-1] {
+		cells = append(cells, strings.TrimSpace(cell))
+	}
+	if len(cells) < 5 {
+		return "", "", "", "", "", "", fmt.Errorf("got %d cells, want at least 5", len(cells))
+	}
+	link := regexp.MustCompile(`^\[(.+?)\]\((#[^)]*)\)$`)
+	match := link.FindStringSubmatch(cells[1])
+	if match == nil {
+		return "", "", "", "", "", "", fmt.Errorf("title cell %q is not a backlog link", cells[1])
+	}
+	scoreMatch := regexp.MustCompile(`^\s*([0-9]+(?:\.[0-9]+)?)`).FindStringSubmatch(cells[3])
+	if scoreMatch == nil {
+		return "", "", "", "", "", "", fmt.Errorf("score cell %q has no leading number", cells[3])
+	}
+	return cells[0], match[1], cells[2], scoreMatch[1], cells[len(cells)-1], match[2], nil
+}
+
+func writePublishedSnapshot(t *testing.T, body string) string {
+	t.Helper()
+	path := filepath.Join(repoRoot(t), "data", "factory", "status", "remote-snapshot.json")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatalf("mkdir snapshot dir: %v", err)
+	}
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatalf("write snapshot: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.Remove(path)
+	})
+	return path
+}
+
+func TestFactoryRemoteSurface(t *testing.T) {
+	startServer(t, "network,database,filesystem", true)
+	published := filepath.Join(repoRoot(t), "data", "factory", "status", "remote-snapshot.json")
+	if err := os.Remove(published); err != nil && !os.IsNotExist(err) {
+		t.Fatalf("clear published snapshot: %v", err)
+	}
+
+	t.Run("missing snapshot is an unknown state", func(t *testing.T) {
+		status, _, raw := request(t, http.MethodGet, "/api/factory/status", "")
+		if status != http.StatusOK {
+			t.Fatalf("status = %d, body %s", status, raw)
+		}
+		body := decodeObject(t, raw)
+		if body["present"] != "false" || body["reason"] != "SNAPSHOT_ABSENT" || body["provenance"] != "ABSENT" {
+			t.Fatalf("absent projection = %v", body)
+		}
+		if body["schema"] != "howlplane.factory.status/v1" {
+			t.Fatalf("schema = %v", body["schema"])
+		}
+		if body["artifact"] != "factory/status/remote-snapshot.json" {
+			t.Fatalf("artifact = %v", body["artifact"])
+		}
+		if body["state"] != "unknown" {
+			t.Fatalf("state = %v, want unknown", body["state"])
+		}
+		if items := listOf(t, body, "blockers"); len(items) != 0 {
+			t.Fatalf("blockers = %v", items)
+		}
+	})
+
+	t.Run("empty source reads the published drop", func(t *testing.T) {
+		status, body := post(t, "/api/factory/status", `{"source":""}`)
+		if status != http.StatusOK {
+			t.Fatalf("status = %d", status)
+		}
+		if body["reason"] != "SNAPSHOT_ABSENT" || body["projection_path"] != "data/factory/status/remote-snapshot.json" {
+			t.Fatalf("body = %v", body)
+		}
+	})
+
+	t.Run("fixture snapshot projects the public contract", func(t *testing.T) {
+		status, _, raw := request(t, http.MethodPost, "/api/factory/status", `{"source":"fixture"}`)
+		if status != http.StatusOK {
+			t.Fatalf("status = %d, body %s", status, raw)
+		}
+		if strings.Contains(string(raw), "recent_completed") || strings.Contains(string(raw), "workspace_file") {
+			t.Fatalf("fixture response leaked a private field: %s", raw)
+		}
+		body := decodeObject(t, raw)
+		if body["present"] != "true" || body["provenance"] != "FIXTURE" || body["redacted"] != "true" {
+			t.Fatalf("fixture flags = present %v provenance %v redacted %v", body["present"], body["provenance"], body["redacted"])
+		}
+		if body["schema"] != "howlplane.factory.status/v1" {
+			t.Fatalf("schema = %v", body["schema"])
+		}
+		if body["repository"] != "howlcipher/howlplane" || body["state"] != "waiting_for_work" {
+			t.Fatalf("identity = %v", body)
+		}
+		if body["current_dispatch"] != "idle" || body["campaign_id"] != "abc123" {
+			t.Fatalf("dispatch/campaign = %v %v", body["current_dispatch"], body["campaign_id"])
+		}
+		if body["mission_campaign_id"] != "2026-09-27-continuous-improvement" {
+			t.Fatalf("mission campaign = %v", body["mission_campaign_id"])
+		}
+		if body["owner_required"] != "true" || body["last_error"] != "" {
+			t.Fatalf("owner/error = %v %v", body["owner_required"], body["last_error"])
+		}
+		if body["failure_count"] != float64(0) {
+			t.Fatalf("failure_count = %v", body["failure_count"])
+		}
+		if body["projection_path"] != "data/fixtures/factory/remote-snapshot.json" {
+			t.Fatalf("projection_path = %v", body["projection_path"])
+		}
+		classes := map[string]bool{}
+		for _, rawItem := range listOf(t, body, "blockers") {
+			item := rawItem.(map[string]any)
+			classes[item["class"].(string)] = true
+		}
+		for _, want := range []string{"OWNER_REQUIRED", "BLOCKED", "DEFERRED"} {
+			if !classes[want] {
+				t.Errorf("missing blocker class %s in %v", want, classes)
+			}
+		}
+	})
+
+	t.Run("client path is not a source", func(t *testing.T) {
+		status, body := post(t, "/api/factory/status", `{"source":"../etc/passwd"}`)
+		if status != http.StatusBadRequest || body["error"] != "UNKNOWN_SOURCE" {
+			t.Fatalf("status %d body %v", status, body)
+		}
+	})
+
+	t.Run("published snapshot drops private fields and tokens", func(t *testing.T) {
+		writePublishedSnapshot(t, `{
+			"schema": "howlplane.factory.status/v1",
+			"redacted": true,
+			"campaign_id": "abc123",
+			"state": "dispatching",
+			"current_dispatch": "D-live",
+			"last_error": "token=ghp_aaaaaaaaaaaaaaaaaaaa",
+			"owner_required": false,
+			"failure_count": 2,
+			"workspace_file": "/home/alice/dev/howlplane",
+			"recent_completed": [{"output": "SECRET_TASK_OUTPUT"}],
+			"recent_failed": [{"stderr": "RAW_FAILURE_OUTPUT"}],
+			"provider_inventory": [{"token": "sk-cccccccccccccccccccc"}]
+		}`)
+		status, _, raw := request(t, http.MethodPost, "/api/factory/status", `{"source":"published"}`)
+		if status != http.StatusOK {
+			t.Fatalf("status = %d, body %s", status, raw)
+		}
+		text := string(raw)
+		for _, secret := range []string{"SECRET_TASK_OUTPUT", "RAW_FAILURE_OUTPUT", "ghp_", "/home/alice", "sk-", "recent_completed", "workspace_file", "provider_inventory"} {
+			if strings.Contains(text, secret) {
+				t.Errorf("response contains %q: %s", secret, text)
+			}
+		}
+		body := decodeObject(t, raw)
+		if body["present"] != "true" || body["provenance"] != "PUBLISHED" {
+			t.Fatalf("flags = %v", body)
+		}
+		if body["state"] != "dispatching" || body["current_dispatch"] != "D-live" {
+			t.Fatalf("state/dispatch = %v %v", body["state"], body["current_dispatch"])
+		}
+		if body["last_error"] != "[redacted]" || body["failure_count"] != float64(2) {
+			t.Fatalf("error/count = %v %v", body["last_error"], body["failure_count"])
+		}
+		_ = os.Remove(published)
+	})
+
+	t.Run("invalid snapshot does not crash", func(t *testing.T) {
+		writePublishedSnapshot(t, `{`)
+		status, body := post(t, "/api/factory/status", `{"source":"published"}`)
+		if status != http.StatusOK || body["present"] != "false" || body["reason"] != "SNAPSHOT_INVALID" {
+			t.Fatalf("status %d body %v", status, body)
+		}
+		_ = os.Remove(published)
+	})
+
+	t.Run("wrong schema is not displayed", func(t *testing.T) {
+		writePublishedSnapshot(t, `{"schema":"howlplane.factory_queue/v1","redacted":true,"last_error":"SECRET_TASK_OUTPUT"}`)
+		status, _, raw := request(t, http.MethodPost, "/api/factory/status", `{"source":"published"}`)
+		body := decodeObject(t, raw)
+		if status != http.StatusOK || body["reason"] != "SCHEMA_MISMATCH" || body["present"] != "false" {
+			t.Fatalf("status %d body %v", status, body)
+		}
+		if strings.Contains(string(raw), "SECRET_TASK_OUTPUT") {
+			t.Fatalf("schema mismatch echoed a field: %s", raw)
+		}
+		_ = os.Remove(published)
+	})
+
+	t.Run("unredacted snapshot is refused", func(t *testing.T) {
+		writePublishedSnapshot(t, `{"schema":"howlplane.factory.status/v1","redacted":false,"last_error":"SECRET_TASK_OUTPUT","state":"idle"}`)
+		status, _, raw := request(t, http.MethodPost, "/api/factory/status", `{"source":"published"}`)
+		body := decodeObject(t, raw)
+		if status != http.StatusOK || body["reason"] != "NOT_REDACTED" || body["present"] != "false" {
+			t.Fatalf("status %d body %v", status, body)
+		}
+		if strings.Contains(string(raw), "SECRET_TASK_OUTPUT") || body["state"] == "idle" {
+			t.Fatalf("unredacted body was displayed: %s", raw)
+		}
+		_ = os.Remove(published)
+	})
+
+	golden := `{"item_id":"91011","title":"Publish redacted factory status","score":"2.0","formula":"4x1/2","rationale":"Remote operators cannot see the live campaign.","source_file":"issues.md","status":"Pending — blocked on #88","symptom":"operators who are not on the Factory host cannot see campaign state.","acceptance":"` + "`factory/status/remote-snapshot.json` contains `campaign_id`, `state`, `current_dispatch`, blockers, `last_tick_at`, and `last_error`, and the file contains no tokens or absolute host home paths." + `"}`
+
+	t.Run("pending row matches the Plane table exactly", func(t *testing.T) {
+		status, body := post(t, "/api/factory/pending-row", golden)
+		if status != http.StatusOK {
+			t.Fatalf("status = %d body %v", status, body)
+		}
+		row, _ := body["row"].(string)
+		if row != goldenPendingRow {
+			t.Fatalf("row = %q\nwant %q", row, goldenPendingRow)
+		}
+		if strings.Contains(row, "blocked") {
+			t.Fatalf("status override leaked into the row: %s", row)
+		}
+		id, title, cellStatus, score, rationale, anchor, err := parseRankedRow(row)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if id != "91011" || title != "Publish redacted factory status" || cellStatus != "Pending" {
+			t.Fatalf("parsed id/title/status = %s %s %s", id, title, cellStatus)
+		}
+		if score != "2.0" || rationale != "Remote operators cannot see the live campaign." {
+			t.Fatalf("parsed score/rationale = %s %s", score, rationale)
+		}
+		if anchor != "#91011-publish-redacted-factory-status" {
+			t.Fatalf("anchor = %s", anchor)
+		}
+		if body["eligible"] != "true" || body["origin"] != "existing_backlog" || body["kind"] != "bug" {
+			t.Fatalf("admission flags = %v", body)
+		}
+		if body["status"] != "Pending" || body["backlog_schema"] != "howlplane.backlog_item/v1" {
+			t.Fatalf("status/schema = %v %v", body["status"], body["backlog_schema"])
+		}
+		if body["detail"] != goldenPendingDetail {
+			t.Fatalf("detail = %q", body["detail"])
+		}
+		header, _ := body["table_header"].(string)
+		if header != "| # | Title | Status | Score | Rationale |\n| --- | --- | --- | --- | --- |" {
+			t.Fatalf("table_header = %q", header)
+		}
+		if !strings.HasPrefix(strings.Split(body["detail"].(string), "\n")[0], "### 91011.") {
+			t.Fatalf("detail heading is not a BacklogSource item section: %v", body["detail"])
+		}
+	})
+
+	t.Run("score below the ROI floor is previewed and not eligible", func(t *testing.T) {
+		status, body := post(t, "/api/factory/pending-row", `{"item_id":"7","title":"Live bug","score":"0.4","rationale":"open","source_file":"bugs.md"}`)
+		if status != http.StatusOK {
+			t.Fatalf("status = %d", status)
+		}
+		if body["eligible"] != "false" || body["ok"] != "true" || body["origin"] != "" || body["kind"] != "bug" {
+			t.Fatalf("flags = %v", body)
+		}
+		row := body["row"].(string)
+		_, _, cellStatus, score, _, _, err := parseRankedRow(row)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cellStatus != "Pending" || score != "0.4" {
+			t.Fatalf("parsed status/score = %s %s", cellStatus, score)
+		}
+		reasons := listOf(t, body, "reasons")
+		if len(reasons) != 1 || reasons[0] != "BELOW_ROI_FLOOR" {
+			t.Fatalf("reasons = %v", reasons)
+		}
+	})
+
+	t.Run("roi floor boundary is eligible", func(t *testing.T) {
+		status, body := post(t, "/api/factory/pending-row", `{"item_id":"8","title":"Floor","score":"0.5","rationale":"meets floor","source_file":"improvements.md"}`)
+		if status != http.StatusOK || body["eligible"] != "true" || body["kind"] != "improvement" {
+			t.Fatalf("status %d body %v", status, body)
+		}
+	})
+
+	t.Run("unsafe cells and unknown files emit no row", func(t *testing.T) {
+		status, body := post(t, "/api/factory/pending-row", `{"item_id":"1","title":"Has | pipe","score":"2.0","rationale":"ok","source_file":"owner_direction"}`)
+		if status != http.StatusOK {
+			t.Fatalf("status = %d", status)
+		}
+		if body["row"] != "" || body["ok"] != "false" || body["eligible"] != "false" {
+			t.Fatalf("body = %v", body)
+		}
+		joined := fmt.Sprint(body["reasons"])
+		if !strings.Contains(joined, "TITLE_CHARS") || !strings.Contains(joined, "UNKNOWN_SOURCE_FILE") {
+			t.Fatalf("reasons = %v", body["reasons"])
+		}
+	})
+}
+
+func TestFactorySurfaceIsProjectionOnly(t *testing.T) {
+	server, err := os.ReadFile(filepath.Join(repoRoot(t), "backend", "server.howl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := os.ReadFile(filepath.Join(repoRoot(t), "frontend", "app.howl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(server) + "\n" + string(app)
+	for _, forbidden := range []string{"factory start", "owner_direction.json", "/api/factory/queue", "/api/factory/start", "write_file"} {
+		if strings.Contains(src, forbidden) {
+			t.Errorf("factory surface contains %q", forbidden)
+		}
+	}
+	if !strings.Contains(string(server), "/api/factory/status") || !strings.Contains(string(server), "/api/factory/pending-row") {
+		t.Error("factory routes missing from server.howl")
+	}
+	if !strings.Contains(string(app), "encode_json") || !strings.Contains(string(app), "/api/factory/pending-row") {
+		t.Error("pending preview must post encode_json to /api/factory/pending-row")
+	}
+}

@@ -27,6 +27,15 @@ Consequently `ENVELOPE_TAMPERED` is never produced — nothing is verified — a
 `OUTSIDE_ENVELOPE_SCOPE` is never produced, because HowlBoard has no scope
 model of its own.
 
+## Factory surface is a projection and a paste preview
+
+HowlBoard can show a redacted Factory snapshot and preview an exact `Pending`
+backlog row. It does not publish that snapshot, start `howlplane factory start`,
+take the supervisor lock, write `issues.md` / `bugs.md` / `improvements.md`, or
+accept `owner_direction` or a factory queue as an admit path. The host copy at
+`data/factory/status/remote-snapshot.json` is absent until an operator places
+the Plane artifact there. See [the factory demo note](factory_demo.md).
+
 ## Read-mostly relationship with the ecosystem
 
 HowlBoard observes. It does not dispatch work to HowlPlane, does not execute
