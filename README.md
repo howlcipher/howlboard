@@ -128,9 +128,11 @@ make run-frontend
 
 Open http://localhost:3000. With no snapshot dropped at
 `data/factory/status/remote-snapshot.json`, the Factory panel says status is
-unknown. **Preview fixture snapshot** loads the committed contract fixture.
-**Preview Pending row** prints a row whose status cell is exactly `Pending`,
-for paste into `issues.md`, `bugs.md`, or `improvements.md`.
+unknown. **Refresh factory status** requests `GET /api/factory/status/published`.
+**Preview fixture snapshot** loads the committed contract fixture from
+`GET /api/factory/status/fixture`. **Preview Pending row** prints a row whose
+status cell is exactly `Pending`, for paste into `issues.md`, `bugs.md`, or
+`improvements.md`.
 
 The short walkthrough is [docs/factory_demo.md](docs/factory_demo.md).
 

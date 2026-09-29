@@ -64,8 +64,10 @@ flows through the real interface; they are not a rich view of past work.
 
 ## Interface constraints inherited from the framework
 
-- Every endpoint is a POST with a JSON body, including reads, because routing
-  is literal-path-only and no opcode exposes query or path parameters.
+- Mission reads are still POST bodies. `/api/missions/get` takes `{"id": "..."}`.
+  Factory status is the exception: `GET /api/factory/status`, `?source=`,
+  `/api/factory/status/{source}`, and the `X-Howlboard-Factory-Source` header.
+  The pending preview stays a POST because it submits a row.
 - The server port is a compile-time literal in `server.howl`; it cannot be set
   from the environment.
 - There is no pagination. The mission list and the audit feed are returned

@@ -31,7 +31,7 @@
     (do
       (res_header "Access-Control-Allow-Origin" "*")
       (res_header "Access-Control-Allow-Methods" "GET, POST, OPTIONS")
-      (res_header "Access-Control-Allow-Headers" "Content-Type")
+      (res_header "Access-Control-Allow-Headers" "Content-Type, X-Howlboard-Factory-Source")
     )
   )
 
@@ -227,7 +227,9 @@
   ; When that file is absent, published status fetches the Git tip over HTTP
   ; (raw.githubusercontent.com). Tip SHA comes from the commits API. This is a
   ; read only: no Factory start, lock, queue, or owner_direction. Fixture at
-  ; data/fixtures/factory/remote-snapshot.json is opt-in via {"source":"fixture"}.
+  ; data/fixtures/factory/remote-snapshot.json is opt-in via the source
+  ; selector: /api/factory/status/{source}, ?source=, or
+  ; X-Howlboard-Factory-Source. The JSON body is not a selector.
 
   (defun contains (haystack needle)
     (type_hint return "bool")
@@ -236,11 +238,20 @@
     )
   )
 
+  ; map_get on a missing key is "" (#103). A present JSON null stringifies
+  ; as "<nil>". Both are blank. is_nil is the store_get test, not this one.
+  (defun blank (v)
+    (type_hint return "bool")
+    (let (s (to_string v))
+      (return (or (= s "") (= s "<nil>")))
+    )
+  )
+
   (defun plain (v)
     (let (s (to_string v))
       (let (out "")
         (do
-          (if (and (!= s "") (!= s "<nil>")) (set out s) (do))
+          (if (call blank v) (do) (set out s))
           (return out)
         )
       )
@@ -326,15 +337,64 @@
       ("read_channel" "")))
   )
 
+  ; Text fields copied off a status document. Anything else — including
+  ; workspace paths, provider tokens, and recent task output — is dropped
+  ; because map_keys walks the record and this allowlist is the only writer.
+  (defun status_text_field (key)
+    (type_hint return "bool")
+    (let (ok false)
+      (do
+        (if (= key "published_at") (set ok true) (do))
+        (if (= key "campaign_id") (set ok true) (do))
+        (if (= key "mission_campaign_id") (set ok true) (do))
+        (if (= key "repository") (set ok true) (do))
+        (if (= key "current_work_item_id") (set ok true) (do))
+        (if (= key "last_tick_at") (set ok true) (do))
+        (if (= key "last_successful_tick_at") (set ok true) (do))
+        (if (= key "last_error") (set ok true) (do))
+        (if (= key "stopped_reason") (set ok true) (do))
+        (if (= key "objective") (set ok true) (do))
+        (if (= key "target_mode") (set ok true) (do))
+        (if (= key "run_mode") (set ok true) (do))
+        (if (= key "authority") (set ok true) (do))
+        (return ok)
+      )
+    )
+  )
+
+  (defun blocker_field (key)
+    (type_hint return "bool")
+    (let (ok false)
+      (do
+        (if (= key "class") (set ok true) (do))
+        (if (= key "work_item_id") (set ok true) (do))
+        (if (= key "state") (set ok true) (do))
+        (if (= key "summary") (set ok true) (do))
+        (if (= key "proposal_id") (set ok true) (do))
+        (return ok)
+      )
+    )
+  )
+
   (defun project_blocker (item)
     (type_hint item "dict")
     (type_hint return "dict")
-    (return (dict
-      ("class" (call scrub (call plain (map_get item "class"))))
-      ("work_item_id" (call scrub (call plain (map_get item "work_item_id"))))
-      ("state" (call scrub (call plain (map_get item "state"))))
-      ("summary" (call scrub (call plain (map_get item "summary"))))
-      ("proposal_id" (call scrub (call plain (map_get item "proposal_id"))))))
+    (let (out (dict
+      ("class" "")
+      ("work_item_id" "")
+      ("state" "")
+      ("summary" "")
+      ("proposal_id" "")))
+      (do
+        (for key (map_keys item)
+          (if (call blocker_field key)
+            (map_set out key (call scrub (call plain (map_get item key))))
+            (do)
+          )
+        )
+        (return out)
+      )
+    )
   )
 
   (defun any_owner (blockers)
@@ -356,35 +416,35 @@
       (let (raw (map_get doc "blockers"))
         (let (n 0)
           (let (provenance "PUBLISHED")
-            (do
-              (if (= source "fixture") (set provenance "FIXTURE") (do))
-              (if (or (= (to_string raw) "") (= (to_string raw) "<nil>"))
-                (do)
-                (try_let (blen (list_len raw))
-                  (catch err (do))
-                  (for item raw
-                    (if (< n 40)
-                      (try_let (probe (map_get item "class"))
-                        (catch berr (do))
-                        (do
-                          (append blockers (call project_blocker item))
-                          (set n (+ n 1))
+            (let (state (call scrub (call plain (map_get doc "state"))))
+              (let (dispatch (call scrub (call plain (map_get doc "current_dispatch"))))
+                (let (owner "false")
+                  (let (out (dict))
+                    (do
+                      (if (= source "fixture") (set provenance "FIXTURE") (do))
+                      (if (call blank raw)
+                        (do)
+                        (try_let (blen (list_len raw))
+                          (catch err (do))
+                          (for item raw
+                            (if (< n 40)
+                              (try_let (probe (map_get item "class"))
+                                (catch berr (do))
+                                (do
+                                  (append blockers (call project_blocker item))
+                                  (set n (+ n 1))
+                                )
+                              )
+                              (do)
+                            )
+                          )
                         )
                       )
-                      (do)
-                    )
-                  )
-                )
-              )
-              (let (state (call scrub (call plain (map_get doc "state"))))
-                (let (dispatch (call scrub (call plain (map_get doc "current_dispatch"))))
-                  (let (owner "false")
-                    (do
                       (if (= state "") (set state "unknown") (do))
                       (if (= dispatch "") (set dispatch "idle") (do))
                       (if (call is_true (map_get doc "owner_required")) (set owner "true") (do))
                       (if (= (call any_owner blockers) "true") (set owner "true") (do))
-                      (return (dict
+                      (set out (dict
                         ("present" "true")
                         ("schema" "howlplane.factory.status/v1")
                         ("artifact" "factory/status/remote-snapshot.json")
@@ -392,24 +452,35 @@
                         ("provenance" provenance)
                         ("reason" "")
                         ("redacted" "true")
-                        ("published_at" (call scrub (call plain (map_get doc "published_at"))))
-                        ("campaign_id" (call scrub (call plain (map_get doc "campaign_id"))))
-                        ("mission_campaign_id" (call scrub (call plain (map_get doc "mission_campaign_id"))))
-                        ("repository" (call scrub (call plain (map_get doc "repository"))))
+                        ("published_at" "")
+                        ("campaign_id" "")
+                        ("mission_campaign_id" "")
+                        ("repository" "")
                         ("state" state)
                         ("current_dispatch" dispatch)
-                        ("current_work_item_id" (call scrub (call plain (map_get doc "current_work_item_id"))))
+                        ("current_work_item_id" "")
                         ("blockers" blockers)
                         ("owner_required" owner)
-                        ("last_tick_at" (call scrub (call plain (map_get doc "last_tick_at"))))
-                        ("last_successful_tick_at" (call scrub (call plain (map_get doc "last_successful_tick_at"))))
-                        ("last_error" (call scrub (call plain (map_get doc "last_error"))))
+                        ("last_tick_at" "")
+                        ("last_successful_tick_at" "")
+                        ("last_error" "")
                         ("failure_count" (to_int (call plain (map_get doc "failure_count"))))
-                        ("stopped_reason" (call scrub (call plain (map_get doc "stopped_reason"))))
-                        ("objective" (call scrub (call plain (map_get doc "objective"))))
-                        ("target_mode" (call scrub (call plain (map_get doc "target_mode"))))
-                        ("run_mode" (call scrub (call plain (map_get doc "run_mode"))))
-                        ("authority" (call scrub (call plain (map_get doc "authority"))))))
+                        ("stopped_reason" "")
+                        ("objective" "")
+                        ("target_mode" "")
+                        ("run_mode" "")
+                        ("authority" "")))
+                      ; state, dispatch, owner_required, failure_count, and
+                      ; blockers are written above. Text fields come only from
+                      ; the allowlist, so a key map_keys sees and status_text_field
+                      ; rejects never reaches the response.
+                      (for key (map_keys doc)
+                        (if (call status_text_field key)
+                          (map_set out key (call scrub (call plain (map_get doc key))))
+                          (do)
+                        )
+                      )
+                      (return out)
                     )
                   )
                 )
@@ -449,7 +520,7 @@
           (catch err (do))
           (set override (call plain v))
         )
-        (if (or (= override "") (= override "<nil>"))
+        (if (call blank override)
           (return "https://raw.githubusercontent.com/howlcipher/howlplane/main/factory/status/remote-snapshot.json")
           (return override)
         )
@@ -464,7 +535,7 @@
           (catch err (do))
           (set override (call plain v))
         )
-        (if (or (= override "") (= override "<nil>"))
+        (if (call blank override)
           (return "https://github.com/howlcipher/howlplane/commits/main")
           (return override)
         )
@@ -472,14 +543,28 @@
     )
   )
 
-  ; Prefer JSON {"sha":"..."} (tests / API). Else scrape the commits HTML page
-  ; so tip lock still works when GitHub API is rate-limited.
+  ; Prefer JSON {"sha":"..."} (tests / API). A wrapped {"commit":{"sha":"..."}}
+  ; is the same lock: chained map_get reads it, but only after the absence
+  ; check, because map_get of a missing intermediate is TYPE_ERROR. Else scrape
+  ; the commits HTML page so tip lock still works when GitHub API is rate-limited.
   (defun tip_sha_from_text (text)
     (let (sha "")
       (do
         (try_let (doc (parse_json Any text))
           (catch perr (do))
-          (set sha (call scrub (call plain (map_get doc "sha"))))
+          (do
+            (set sha (call scrub (call plain (map_get doc "sha"))))
+            (if (= sha "")
+              (if (call blank (map_get doc "commit"))
+                (do)
+                (try_let (nested (map_get (map_get doc "commit") "sha"))
+                  (catch nested_err (do))
+                  (set sha (call scrub (call plain nested)))
+                )
+              )
+              (do)
+            )
+          )
         )
         (if (= sha "")
           (let (parts (str_split text "/howlcipher/howlplane/commit/"))
@@ -589,7 +674,7 @@
   (defun serve_factory_status (source)
     (let (normalized source)
       (do
-        (if (or (= normalized "") (= normalized "<nil>")) (set normalized "published") (do))
+        (if (call blank normalized) (set normalized "published") (do))
         (let (path (call status_projection_path normalized))
           (if (= path "")
             (res_json 400 (dict
@@ -1323,24 +1408,46 @@
     )
   ))
 
-  ; Redacted Factory snapshot. GET and POST {"source":"published"} read the
-  ; operator drop. POST {"source":"fixture"} reads the committed fixture.
+  ; Redacted Factory snapshot. The selector is a request read, not a POST
+  ; body: path wins, then query, then X-Howlboard-Factory-Source. A missing
+  ; selector is "" and serve_factory_status treats that as published.
   ; Missing, invalid, wrong-schema, and non-redacted files degrade to a
   ; present=false body. No supervisor is contacted.
-  (route "/api/factory/status" (lambda (req)
+  (defun first_present (preferred fallback)
+    (let (out fallback)
+      (do
+        (if (= preferred "") (do) (set out preferred))
+        (return out)
+      )
+    )
+  )
+
+  (defun factory_source_from_request (req)
+    (let (from_path (req_path req "source"))
+      (let (from_query (req_query req "source"))
+        (let (from_header (req_header req "x-howlboard-factory-source"))
+          (return (call first_present from_path (call first_present from_query from_header)))
+        )
+      )
+    )
+  )
+
+  (defun dispatch_factory_status (req)
     (do
       (call cors)
       (if (= (req_method req) "OPTIONS")
         (res_json 200 (dict ("status" "ok")))
-        (if (= (req_method req) "POST")
-          (try_let (body (parse_json Any req.body))
-            (catch err (res_json 400 (dict ("error" "INVALID_JSON"))))
-            (call serve_factory_status (to_string (map_get body "source")))
-          )
-          (call serve_factory_status "published")
-        )
+        (call serve_factory_status (call factory_source_from_request req))
       )
     )
+  )
+
+  (route "/api/factory/status" (lambda (req)
+    (call dispatch_factory_status req)
+  ))
+
+  (route "/api/factory/status/{source}" (lambda (req)
+    (call dispatch_factory_status req)
   ))
 
   ; Preview an exact Pending backlog row. Does not write issues.md, bugs.md,

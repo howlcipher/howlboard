@@ -55,19 +55,20 @@ From [the dogfooding findings](dogfooding.md), in order of impact:
    work for the JavaScript backend, and the interface is split across
    `app.howl` and `mission_view.howl` — which makes the gap on the bytecode
    target, the tier the security story rests on, the more conspicuous.
-2. **Dict key enumeration (`map_keys`).** Its absence changed a public API
-   shape: `/api/projects` returns a list of records rather than a keyed object
-   purely because a HowlFrame client cannot iterate an object's keys.
+2. **Dict key enumeration (`map_keys`).** Frame now has it. Factory status
+   uses it to copy allowlisted blocker and text fields and drop the rest.
+   `/api/projects` is still a list of records; that public shape was not
+   changed in the factory dogfood.
 3. **One absence idiom.** `map_get` returns `""` for a missing key while
-   `store_get` returns a nil sentinel, so `is_nil` is correct for one and wrong
-   for the other. This produced the hardest bug of the build and will produce
-   more.
-4. **Chained accessors.** `(map_get (map_get m "a") "b")` is rejected; every
-   level of nesting costs a `let`. This is the dominant source of indentation
-   in both tiers.
-5. **`escape_html`.** The JS backend is built around `set_html`, which does not
-   escape. The obvious code is unsafe and every author must know to write their
-   own escaper.
+   `store_get` returns a nil sentinel. Factory status uses `blank` for the
+   `""` / JSON-null case and leaves `is_nil` on store reads. Mission code
+   still has both checks inline.
+4. **Chained accessors.** `(map_get (map_get doc "commit") "sha")` works.
+   Factory tip lock uses it after an absence check. The rest of the program
+   still binds intermediate dicts with `let`.
+5. **`html_escape` / `attr_escape`.** The Factory panel uses them. Mission
+   rendering still uses the hand-rolled `esc`. HTML encoding is still not a
+   JavaScript encoder; handler bodies stay constant strings.
 6. **Date/time primitives.** Blocking the ledger timestamp work above.
 7. **A sort primitive.** Needed for any ordering not achievable by key sort or
    insertion order.
