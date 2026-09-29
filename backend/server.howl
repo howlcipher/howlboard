@@ -222,10 +222,12 @@
   ; ------------------------------------------------------- factory projection
   ;
   ; Reads a redacted howlplane.factory.status/v1 document. The Plane artifact
-  ; is factory/status/remote-snapshot.json. Until the host publishes it, the
-  ; Board drop at data/factory/status/remote-snapshot.json is absent and the
-  ; response says so. A fixture at data/fixtures/factory/remote-snapshot.json
-  ; is opt-in via {"source":"fixture"} and is labelled FIXTURE.
+  ; is factory/status/remote-snapshot.json on howlcipher/howlplane. Board first
+  ; checks the optional local drop at data/factory/status/remote-snapshot.json.
+  ; When that file is absent, published status fetches the Git tip over HTTP
+  ; (raw.githubusercontent.com). Tip SHA comes from the commits API. This is a
+  ; read only: no Factory start, lock, queue, or owner_direction. Fixture at
+  ; data/fixtures/factory/remote-snapshot.json is opt-in via {"source":"fixture"}.
 
   (defun contains (haystack needle)
     (type_hint return "bool")
@@ -317,7 +319,11 @@
       ("objective" "")
       ("target_mode" "")
       ("run_mode" "")
-      ("authority" "")))
+      ("authority" "")
+      ("source_url" "")
+      ("tip_sha" "")
+      ("tip_ref" "")
+      ("read_channel" "")))
   )
 
   (defun project_blocker (item)
@@ -434,6 +440,152 @@
     )
   )
 
+  ; Default Plane git tip. Board-only provenance; not a Plane schema field.
+  ; HOWLBOARD_FACTORY_SNAPSHOT_URL / HOWLBOARD_FACTORY_TIP_URL override for tests.
+  (defun plane_snapshot_url ()
+    (let (override "")
+      (do
+        (try_let (v (env "HOWLBOARD_FACTORY_SNAPSHOT_URL"))
+          (catch err (do))
+          (set override (call plain v))
+        )
+        (if (or (= override "") (= override "<nil>"))
+          (return "https://raw.githubusercontent.com/howlcipher/howlplane/main/factory/status/remote-snapshot.json")
+          (return override)
+        )
+      )
+    )
+  )
+
+  (defun plane_tip_url ()
+    (let (override "")
+      (do
+        (try_let (v (env "HOWLBOARD_FACTORY_TIP_URL"))
+          (catch err (do))
+          (set override (call plain v))
+        )
+        (if (or (= override "") (= override "<nil>"))
+          (return "https://github.com/howlcipher/howlplane/commits/main")
+          (return override)
+        )
+      )
+    )
+  )
+
+  ; Prefer JSON {"sha":"..."} (tests / API). Else scrape the commits HTML page
+  ; so tip lock still works when GitHub API is rate-limited.
+  (defun tip_sha_from_text (text)
+    (let (sha "")
+      (do
+        (try_let (doc (parse_json Any text))
+          (catch perr (do))
+          (set sha (call scrub (call plain (map_get doc "sha"))))
+        )
+        (if (= sha "")
+          (let (parts (str_split text "/howlcipher/howlplane/commit/"))
+            (if (> (list_len parts) 1)
+              (let (n 0)
+                (for p parts
+                  (do
+                    (if (= n 1)
+                      (let (cells (str_split p "\""))
+                        (let (m 0)
+                          (for c cells
+                            (do
+                              (if (= m 0)
+                                (if (regex_match "^[0-9a-f]+$" c)
+                                  (set sha (call scrub c))
+                                  (do)
+                                )
+                                (do)
+                              )
+                              (set m (+ m 1))
+                            )
+                          )
+                        )
+                      )
+                      (do)
+                    )
+                    (set n (+ n 1))
+                  )
+                )
+              )
+              (do)
+            )
+          )
+          (do)
+        )
+        (return sha)
+      )
+    )
+  )
+
+  (defun fetch_tip_sha ()
+    (let (sha "")
+      (do
+        (try_let (raw (fetch (call plane_tip_url) "GET"))
+          (catch err (do))
+          (let (text (bytes_to_string raw))
+            (set sha (call tip_sha_from_text text))
+          )
+        )
+        (return sha)
+      )
+    )
+  )
+
+  (defun attach_git_provenance (proj source_url tip_sha tip_ref read_channel)
+    (type_hint proj "dict")
+    (type_hint return "dict")
+    (do
+      (map_set proj "source_url" source_url)
+      (map_set proj "tip_sha" tip_sha)
+      (map_set proj "tip_ref" tip_ref)
+      (map_set proj "read_channel" read_channel)
+      (return proj)
+    )
+  )
+
+  (defun respond_projected (doc path source read_channel source_url tip_ref)
+    (let (proj (call project_snapshot doc path source))
+      (do
+        (if (= (map_get proj "present") "true")
+          (do
+            (if (= read_channel "plane_git")
+              (set proj (call attach_git_provenance proj source_url (call fetch_tip_sha) tip_ref read_channel))
+              (set proj (call attach_git_provenance proj source_url "" tip_ref read_channel))
+            )
+          )
+          (do
+            (map_set proj "source_url" source_url)
+            (map_set proj "read_channel" read_channel)
+          )
+        )
+        (res_json 200 proj)
+      )
+    )
+  )
+
+  (defun serve_published_from_plane_git (local_path)
+    (let (url (call plane_snapshot_url))
+      (do
+        (try_let (raw (fetch url "GET"))
+          (catch missing (res_json 200 (call attach_git_provenance
+            (call absent_status "SNAPSHOT_ABSENT" "ABSENT" local_path)
+            url "" "main" "plane_git")))
+          (let (text (bytes_to_string raw))
+            (try_let (doc (parse_json Any text))
+              (catch perr (res_json 200 (call attach_git_provenance
+                (call absent_status "SNAPSHOT_INVALID" "INVALID" url)
+                url "" "main" "plane_git")))
+              (call respond_projected doc "factory/status/remote-snapshot.json" "published" "plane_git" url "main")
+            )
+          )
+        )
+      )
+    )
+  )
+
   (defun serve_factory_status (source)
     (let (normalized source)
       (do
@@ -448,12 +600,23 @@
               (catch err (res_json 500 (dict
                 ("error" "STATUS_UNREADABLE")
                 ("reason" "FILESYSTEM_UNAVAILABLE"))))
-              (try_let (raw (read_file path))
-                (catch missing (res_json 200 (call absent_status "SNAPSHOT_ABSENT" "ABSENT" path)))
-                (let (text (bytes_to_string raw))
-                  (try_let (doc (parse_json Any text))
-                    (catch perr (res_json 200 (call absent_status "SNAPSHOT_INVALID" "INVALID" path)))
-                    (res_json 200 (call project_snapshot doc path normalized))
+              (if (= normalized "published")
+                (try_let (raw (read_file path))
+                  (catch missing (call serve_published_from_plane_git path))
+                  (let (text (bytes_to_string raw))
+                    (try_let (doc (parse_json Any text))
+                      (catch perr (res_json 200 (call absent_status "SNAPSHOT_INVALID" "INVALID" path)))
+                      (call respond_projected doc path normalized "local_drop" path "")
+                    )
+                  )
+                )
+                (try_let (raw (read_file path))
+                  (catch missing (res_json 200 (call absent_status "SNAPSHOT_ABSENT" "ABSENT" path)))
+                  (let (text (bytes_to_string raw))
+                    (try_let (doc (parse_json Any text))
+                      (catch perr (res_json 200 (call absent_status "SNAPSHOT_INVALID" "INVALID" path)))
+                      (res_json 200 (call project_snapshot doc path normalized))
+                    )
                   )
                 )
               )

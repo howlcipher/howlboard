@@ -116,8 +116,13 @@
                       "<dt>Last error</dt><dd>" (call none (map_get d "last_error")) "</dd>"
                       "<dt>Failures</dt><dd>" (call none (map_get d "failure_count")) "</dd>"
                       "<dt>Authority</dt><dd>" (call none (map_get d "authority")) "</dd>"
+                      "<dt>Stopped reason</dt><dd>" (call none (map_get d "stopped_reason")) "</dd>"
                       "<dt>Objective</dt><dd>" (call none (map_get d "objective")) "</dd>"
                       "<dt>Published</dt><dd>" (call none (map_get d "published_at")) "</dd>"
+                      "<dt>Read channel</dt><dd>" (call none (map_get d "read_channel")) "</dd>"
+                      "<dt>Tip SHA</dt><dd>" (call none (map_get d "tip_sha")) "</dd>"
+                      "<dt>Tip ref</dt><dd>" (call none (map_get d "tip_ref")) "</dd>"
+                      "<dt>Source URL</dt><dd>" (call none (map_get d "source_url")) "</dd>"
                       "</dl><h3>Blockers</h3>") ""))
                     (let (n 0)
                       (do
@@ -146,9 +151,9 @@
                     (set html (str_join (list html "<p class=\"empty\">") ""))
                     (if (= reason "SNAPSHOT_ABSENT")
                       (set html (str_join (list html
-                        "Factory status is unknown. Plane has not published <code>factory/status/remote-snapshot.json</code> into the Board drop at <code>"
+                        "Factory status is unknown. Local drop and Plane git tip both lacked a readable <code>factory/status/remote-snapshot.json</code> (path <code>"
                         (call view/esc (map_get d "projection_path"))
-                        "</code>. Nothing was started.") ""))
+                        "</code>). Nothing was started.") ""))
                       (do)
                     )
                     (if (= reason "SNAPSHOT_INVALID")
@@ -173,6 +178,16 @@
                 (if (= prov "FIXTURE")
                   (set html (str_join (list html
                     "<p class=\"factory-note\">Fixture preview. This is not a snapshot published by the Factory host.</p>") ""))
+                  (do)
+                )
+                (if (= (to_string (map_get d "read_channel")) "plane_git")
+                  (set html (str_join (list html
+                    "<p class=\"factory-note\">Live Plane git tip. Projection only — no Factory start, lock, queue, or owner_direction.</p>") ""))
+                  (do)
+                )
+                (if (= (to_string (map_get d "read_channel")) "local_drop")
+                  (set html (str_join (list html
+                    "<p class=\"factory-note\">Local operator drop. Prefer Plane git when the host has published.</p>") ""))
                   (do)
                 )
                 (return html)

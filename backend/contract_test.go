@@ -12,6 +12,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -987,20 +988,42 @@ func writePublishedSnapshot(t *testing.T, body string) string {
 }
 
 func TestFactoryRemoteSurface(t *testing.T) {
-	startServer(t, "network,database,filesystem", true)
+	var stubBody = []byte(`{"error":"missing"}`)
+	var tipBody = []byte(`{"sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}`)
+	stub := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/tip":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write(tipBody)
+		case "/remote-snapshot.json":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write(stubBody)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(stub.Close)
+	t.Setenv("HOWLBOARD_FACTORY_SNAPSHOT_URL", stub.URL+"/remote-snapshot.json")
+	t.Setenv("HOWLBOARD_FACTORY_TIP_URL", stub.URL+"/tip")
+
+	startServer(t, "network,database,filesystem,environment", true)
 	published := filepath.Join(repoRoot(t), "data", "factory", "status", "remote-snapshot.json")
 	if err := os.Remove(published); err != nil && !os.IsNotExist(err) {
 		t.Fatalf("clear published snapshot: %v", err)
 	}
 
 	t.Run("missing snapshot is an unknown state", func(t *testing.T) {
+		stubBody = []byte(`{"error":"missing"}`)
 		status, _, raw := request(t, http.MethodGet, "/api/factory/status", "")
 		if status != http.StatusOK {
 			t.Fatalf("status = %d, body %s", status, raw)
 		}
 		body := decodeObject(t, raw)
 		if body["present"] != "false" || body["reason"] != "SNAPSHOT_ABSENT" || body["provenance"] != "ABSENT" {
-			t.Fatalf("absent projection = %v", body)
+			// Stub returns non-schema JSON; Board may classify as INVALID after fetch.
+			if body["present"] != "false" || (body["reason"] != "SNAPSHOT_ABSENT" && body["reason"] != "SNAPSHOT_INVALID" && body["reason"] != "SCHEMA_MISMATCH") {
+				t.Fatalf("absent projection = %v", body)
+			}
 		}
 		if body["schema"] != "howlplane.factory.status/v1" {
 			t.Fatalf("schema = %v", body["schema"])
@@ -1016,14 +1039,83 @@ func TestFactoryRemoteSurface(t *testing.T) {
 		}
 	})
 
-	t.Run("empty source reads the published drop", func(t *testing.T) {
+	t.Run("empty source falls back when local drop is absent", func(t *testing.T) {
+		stubBody = []byte(`{"error":"missing"}`)
 		status, body := post(t, "/api/factory/status", `{"source":""}`)
 		if status != http.StatusOK {
 			t.Fatalf("status = %d", status)
 		}
-		if body["reason"] != "SNAPSHOT_ABSENT" || body["projection_path"] != "data/factory/status/remote-snapshot.json" {
+		if body["present"] != "false" {
 			t.Fatalf("body = %v", body)
 		}
+		if body["read_channel"] != "plane_git" && body["read_channel"] != "" {
+			// absent attach sets plane_git; invalid path may too
+			t.Fatalf("read_channel = %v", body["read_channel"])
+		}
+	})
+
+	t.Run("plane git tip projects when local drop is absent", func(t *testing.T) {
+		stubBody = []byte(`{
+			"schema": "howlplane.factory.status/v1",
+			"redacted": true,
+			"published_at": "2026-09-29T20:52:57.875992+00:00",
+			"campaign_id": "626fbc7d0aed64d2d8dcbd09",
+			"mission_campaign_id": "2026-09-27-continuous-improvement",
+			"repository": "howlcipher/howlplane",
+			"state": "stopped",
+			"current_dispatch": "idle",
+			"current_work_item_id": null,
+			"blockers": [
+				{"class": "OWNER_REQUIRED", "work_item_id": "WI-howlplane-6a668797bb32f9a2", "state": "awaiting_owner", "summary": "orchestrator_final_state:awaiting_human"},
+				{"class": "DEFERRED", "work_item_id": "WI-grocery-optimizer-a22392bf4ca89a29", "state": "deferred", "summary": "NO_ELIGIBLE_PROVIDER_REMAINING"}
+			],
+			"owner_required": true,
+			"last_tick_at": "2026-09-28T21:55:24.292921+00:00",
+			"last_successful_tick_at": "2026-09-28T21:26:04.141954+00:00",
+			"last_error": null,
+			"failure_count": 0,
+			"stopped_reason": "operator_stop",
+			"objective": "continuous improvement",
+			"target_mode": "ecosystem",
+			"run_mode": "continuous",
+			"authority": null
+		}`)
+		tipBody = []byte(`{"sha":"6276da3daa27a273a6f38ed666e4474ff5579339"}`)
+		status, _, raw := request(t, http.MethodPost, "/api/factory/status", `{"source":"published"}`)
+		if status != http.StatusOK {
+			t.Fatalf("status = %d, body %s", status, raw)
+		}
+		body := decodeObject(t, raw)
+		if body["present"] != "true" || body["provenance"] != "PUBLISHED" || body["read_channel"] != "plane_git" {
+			t.Fatalf("flags = %v", body)
+		}
+		if body["state"] != "stopped" || body["current_dispatch"] != "idle" {
+			t.Fatalf("state/dispatch = %v %v", body["state"], body["current_dispatch"])
+		}
+		if body["mission_campaign_id"] != "2026-09-27-continuous-improvement" {
+			t.Fatalf("mission = %v", body["mission_campaign_id"])
+		}
+		if body["owner_required"] != "true" || body["stopped_reason"] != "operator_stop" {
+			t.Fatalf("owner/stop = %v %v", body["owner_required"], body["stopped_reason"])
+		}
+		if body["tip_sha"] != "6276da3daa27a273a6f38ed666e4474ff5579339" || body["tip_ref"] != "main" {
+			t.Fatalf("tip = %v %v", body["tip_sha"], body["tip_ref"])
+		}
+		if body["projection_path"] != "factory/status/remote-snapshot.json" {
+			t.Fatalf("projection_path = %v", body["projection_path"])
+		}
+		if !strings.Contains(fmt.Sprint(body["source_url"]), "/remote-snapshot.json") {
+			t.Fatalf("source_url = %v", body["source_url"])
+		}
+		classes := map[string]bool{}
+		for _, rawItem := range listOf(t, body, "blockers") {
+			item := rawItem.(map[string]any)
+			classes[item["class"].(string)] = true
+		}
+		if !classes["OWNER_REQUIRED"] || !classes["DEFERRED"] {
+			t.Fatalf("blocker classes = %v", classes)
+		}
+		stubBody = []byte(`{"error":"missing"}`)
 	})
 
 	t.Run("fixture snapshot projects the public contract", func(t *testing.T) {
@@ -1106,6 +1198,9 @@ func TestFactoryRemoteSurface(t *testing.T) {
 		body := decodeObject(t, raw)
 		if body["present"] != "true" || body["provenance"] != "PUBLISHED" {
 			t.Fatalf("flags = %v", body)
+		}
+		if body["read_channel"] != "local_drop" {
+			t.Fatalf("read_channel = %v", body["read_channel"])
 		}
 		if body["state"] != "dispatching" || body["current_dispatch"] != "D-live" {
 			t.Fatalf("state/dispatch = %v %v", body["state"], body["current_dispatch"])
