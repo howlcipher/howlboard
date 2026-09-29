@@ -8,13 +8,14 @@
 (web_app
 
   (use "mission_view.howl" as view)
+  (use "factory_view.howl" as factory)
 
   (defun api_url (path)
     (return (str_join (list "http://localhost:8080" path) ""))
   )
 
-  ; No HTML-escaping primitive exists, so escaping is built from str_split and
-  ; str_join. The ampersand pass must run first or the later passes double-encode.
+  ; Mission rendering still uses view/esc, built from str_split and str_join.
+  ; The Factory panel uses html_escape and attr_escape (factory_view.howl).
 
 
 
@@ -58,181 +59,7 @@
   )
 
   ; Factory status is a projection. Missing snapshots render as unknown.
-
-  (defun none (s)
-    (let (text (to_string s))
-      (let (out "none")
-        (do
-          (if (= text "") (do) (set out (call view/esc text)))
-          (return out)
-        )
-      )
-    )
-  )
-
-  (defun blocker_class (cls)
-    (let (css "blocker")
-      (do
-        (if (= cls "OWNER_REQUIRED") (set css "blocker blocker-owner") (do))
-        (if (= cls "BLOCKED") (set css "blocker blocker-blocked") (do))
-        (if (= cls "DEFERRED") (set css "blocker blocker-deferred") (do))
-        (return css)
-      )
-    )
-  )
-
-  (defun render_factory (d)
-    (type_hint d "dict")
-    (let (err (to_string (map_get d "error")))
-      (let (html "")
-        (do
-          (if (= err "")
-            (do)
-            (return (str_join (list "<p class=\"empty\">" (call view/esc err) "</p>") ""))
-          )
-          (let (prov (to_string (map_get d "provenance")))
-            (let (reason (to_string (map_get d "reason")))
-              (let (prov_class "prov")
-              (do
-                (if (= prov "PUBLISHED") (set prov_class "prov prov-PUBLISHED") (do))
-                (if (= prov "FIXTURE") (set prov_class "prov prov-FIXTURE") (do))
-                (if (= prov "ABSENT") (set prov_class "prov prov-ABSENT") (do))
-                (if (= prov "INVALID") (set prov_class "prov prov-INVALID") (do))
-                (set html (str_join (list
-                  "<span class=\"" prov_class "\">" (call view/esc prov) "</span>") ""))
-                (if (= (map_get d "present") "true")
-                  (do
-                    (set html (str_join (list html
-                      "<p class=\"item-sub\">Projection of <code>howlplane.factory.status/v1</code> from Plane artifact <code>factory/status/remote-snapshot.json</code>. Not an authority grant.</p>"
-                      "<dl class=\"kv\">"
-                      "<dt>Campaign</dt><dd>" (call none (map_get d "campaign_id")) "</dd>"
-                      "<dt>Mission campaign</dt><dd>" (call none (map_get d "mission_campaign_id")) "</dd>"
-                      "<dt>Repository</dt><dd>" (call none (map_get d "repository")) "</dd>"
-                      "<dt>State</dt><dd>" (call none (map_get d "state")) "</dd>"
-                      "<dt>Dispatch</dt><dd>" (call none (map_get d "current_dispatch")) "</dd>"
-                      "<dt>Work item</dt><dd>" (call none (map_get d "current_work_item_id")) "</dd>"
-                      "<dt>Owner required</dt><dd>" (call none (map_get d "owner_required")) "</dd>"
-                      "<dt>Last tick</dt><dd>" (call none (map_get d "last_tick_at")) "</dd>"
-                      "<dt>Last error</dt><dd>" (call none (map_get d "last_error")) "</dd>"
-                      "<dt>Failures</dt><dd>" (call none (map_get d "failure_count")) "</dd>"
-                      "<dt>Authority</dt><dd>" (call none (map_get d "authority")) "</dd>"
-                      "<dt>Stopped reason</dt><dd>" (call none (map_get d "stopped_reason")) "</dd>"
-                      "<dt>Objective</dt><dd>" (call none (map_get d "objective")) "</dd>"
-                      "<dt>Published</dt><dd>" (call none (map_get d "published_at")) "</dd>"
-                      "<dt>Read channel</dt><dd>" (call none (map_get d "read_channel")) "</dd>"
-                      "<dt>Tip SHA</dt><dd>" (call none (map_get d "tip_sha")) "</dd>"
-                      "<dt>Tip ref</dt><dd>" (call none (map_get d "tip_ref")) "</dd>"
-                      "<dt>Source URL</dt><dd>" (call none (map_get d "source_url")) "</dd>"
-                      "</dl><h3>Blockers</h3>") ""))
-                    (let (n 0)
-                      (do
-                        (for b (map_get d "blockers")
-                          (let (cls (to_string (map_get b "class")))
-                            (do
-                              (set n (+ n 1))
-                              (set html (str_join (list html
-                                "<div class=\"" (call blocker_class cls) "\">"
-                                "<span class=\"state\">" (call view/esc cls) "</span>"
-                                "<span>" (call none (map_get b "summary")) "</span>"
-                                "<div class=\"item-sub\">" (call none (map_get b "work_item_id"))
-                                " " (call none (map_get b "state"))
-                                " " (call none (map_get b "proposal_id")) "</div></div>") ""))
-                            )
-                          )
-                        )
-                        (if (= n 0)
-                          (set html (str_join (list html "<p class=\"empty\">No blockers in the snapshot.</p>") ""))
-                          (do)
-                        )
-                      )
-                    )
-                  )
-                  (do
-                    (set html (str_join (list html "<p class=\"empty\">") ""))
-                    (if (= reason "SNAPSHOT_ABSENT")
-                      (set html (str_join (list html
-                        "Factory status is unknown. Local drop and Plane git tip both lacked a readable <code>factory/status/remote-snapshot.json</code> (path <code>"
-                        (call view/esc (map_get d "projection_path"))
-                        "</code>). Nothing was started.") ""))
-                      (do)
-                    )
-                    (if (= reason "SNAPSHOT_INVALID")
-                      (set html (str_join (list html "The snapshot file is not valid JSON. Status stays unknown.") ""))
-                      (do)
-                    )
-                    (if (= reason "SCHEMA_MISMATCH")
-                      (set html (str_join (list html "The file is not schema <code>howlplane.factory.status/v1</code>, so it was not displayed.") ""))
-                      (do)
-                    )
-                    (if (= reason "NOT_REDACTED")
-                      (set html (str_join (list html "The file is not marked redacted. HowlBoard refused to display it.") ""))
-                      (do)
-                    )
-                    (if (= reason "")
-                      (set html (str_join (list html "Factory status is unknown.") ""))
-                      (do)
-                    )
-                    (set html (str_join (list html "</p>") ""))
-                  )
-                )
-                (if (= prov "FIXTURE")
-                  (set html (str_join (list html
-                    "<p class=\"factory-note\">Fixture preview. This is not a snapshot published by the Factory host.</p>") ""))
-                  (do)
-                )
-                (if (= (to_string (map_get d "read_channel")) "plane_git")
-                  (set html (str_join (list html
-                    "<p class=\"factory-note\">Live Plane git tip. Projection only — no Factory start, lock, queue, or owner_direction.</p>") ""))
-                  (do)
-                )
-                (if (= (to_string (map_get d "read_channel")) "local_drop")
-                  (set html (str_join (list html
-                    "<p class=\"factory-note\">Local operator drop. Prefer Plane git when the host has published.</p>") ""))
-                  (do)
-                )
-                (return html)
-              )
-            )
-            )
-          )
-        )
-      )
-    )
-  )
-
-  (defun render_pending (d)
-    (type_hint d "dict")
-    (let (html "")
-      (do
-        (if (= (map_get d "eligible") "true")
-          (set html "<p class=\"eligible-yes\">Eligible. BacklogSource would admit this exact Pending row as existing_backlog.</p>")
-          (set html "<p class=\"eligible-no\">Not eligible yet. The preview did not admit anything.</p>")
-        )
-        (let (reasons (map_get d "reasons"))
-          (do
-            (if (= (to_string reasons) "")
-              (do)
-              (do
-                (set html (str_join (list html "<ul>") ""))
-                (for reason reasons
-                  (set html (str_join (list html "<li>" (call view/esc reason) "</li>") ""))
-                )
-                (set html (str_join (list html "</ul>") ""))
-              )
-            )
-            (if (= (to_string (map_get d "markdown")) "")
-              (do)
-              (set html (str_join (list html
-                "<pre class=\"pending-preview\">" (call view/esc (map_get d "markdown")) "</pre>") ""))
-            )
-            (set html (str_join (list html
-              "<p class=\"factory-note\">" (call view/esc (map_get d "note")) "</p>") ""))
-            (return html)
-          )
-        )
-      )
-    )
-  )
+  ; Markup comes from factory_view.howl.
 
   ; --------------------------------------------------------- mission list
 
@@ -428,13 +255,14 @@
 
   (defun load_factory (source)
     (type_hint return "void")
-    (try_let (raw (fetch (call api_url "/api/factory/status") "POST" (encode_json (dict ("source" source)))))
+    ; Path segment, not a JSON body. published and fixture are whole segments.
+    (try_let (raw (fetch (call api_url (str_join (list "/api/factory/status/" source) "")) "GET"))
       (catch err (set_html (dom_query "#factory-status")
         "<p class=\"empty\">Factory status API is unreachable. Nothing was started.</p>"))
       (try_let (d (parse_json Any raw))
         (catch perr (set_html (dom_query "#factory-status")
           "<p class=\"empty\">Factory status response was not valid JSON.</p>"))
-        (set_html (dom_query "#factory-status") (call render_factory d))
+        (set_html (dom_query "#factory-status") (call factory/render_factory d))
       )
     )
   )
@@ -456,7 +284,7 @@
         (try_let (d (parse_json Any raw))
           (catch perr (set_html (dom_query "#pending-preview")
             "<p class=\"empty\">Pending preview response was not valid JSON.</p>"))
-          (set_html (dom_query "#pending-preview") (call render_pending d))
+          (set_html (dom_query "#pending-preview") (call factory/render_pending d))
         )
       )
     )

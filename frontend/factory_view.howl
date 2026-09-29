@@ -1,0 +1,197 @@
+; Factory status and Pending preview rendering.
+;
+; This is the Board path that consumes HowlFrame #105. Text nodes use
+; html_escape. Quoted attributes use attr_escape. Neither encoder is a
+; JavaScript encoder, so this module does not emit an inline handler at all.
+; The pending row's markdown is text inside <pre> and, for the attribute
+; context, the same string in data-markdown.
+;
+; Mission rows still use mission_view's hand-rolled esc. That is a separate
+; path and is not rewritten here.
+
+(module
+
+  (defun none (s)
+    (let (text (to_string s))
+      (let (out "none")
+        (do
+          (if (= text "") (do) (set out (html_escape text)))
+          (return out)
+        )
+      )
+    )
+  )
+
+  (defun blocker_class (cls)
+    (let (css "blocker")
+      (do
+        (if (= cls "OWNER_REQUIRED") (set css "blocker blocker-owner") (do))
+        (if (= cls "BLOCKED") (set css "blocker blocker-blocked") (do))
+        (if (= cls "DEFERRED") (set css "blocker blocker-deferred") (do))
+        (return css)
+      )
+    )
+  )
+
+  (export
+  (defun render_factory (d)
+    (type_hint d "dict")
+    (let (err (to_string (map_get d "error")))
+      (let (html "")
+        (do
+          (if (= err "")
+            (do)
+            (return (str_join (list "<p class=\"empty\">" (html_escape err) "</p>") ""))
+          )
+          (let (prov (to_string (map_get d "provenance")))
+            (let (reason (to_string (map_get d "reason")))
+              (let (prov_class "prov")
+              (do
+                (if (= prov "PUBLISHED") (set prov_class "prov prov-PUBLISHED") (do))
+                (if (= prov "FIXTURE") (set prov_class "prov prov-FIXTURE") (do))
+                (if (= prov "ABSENT") (set prov_class "prov prov-ABSENT") (do))
+                (if (= prov "INVALID") (set prov_class "prov prov-INVALID") (do))
+                (set html (str_join (list
+                  "<span class=\"" prov_class "\" data-provenance=\"" (attr_escape prov) "\">"
+                  (html_escape prov) "</span>") ""))
+                (if (= (map_get d "present") "true")
+                  (do
+                    (set html (str_join (list html
+                      "<p class=\"item-sub\">Projection of <code>howlplane.factory.status/v1</code> from Plane artifact <code>factory/status/remote-snapshot.json</code>. Not an authority grant.</p>"
+                      "<dl class=\"kv\">"
+                      "<dt>Campaign</dt><dd>" (call none (map_get d "campaign_id")) "</dd>"
+                      "<dt>Mission campaign</dt><dd>" (call none (map_get d "mission_campaign_id")) "</dd>"
+                      "<dt>Repository</dt><dd>" (call none (map_get d "repository")) "</dd>"
+                      "<dt>State</dt><dd>" (call none (map_get d "state")) "</dd>"
+                      "<dt>Dispatch</dt><dd>" (call none (map_get d "current_dispatch")) "</dd>"
+                      "<dt>Work item</dt><dd>" (call none (map_get d "current_work_item_id")) "</dd>"
+                      "<dt>Owner required</dt><dd>" (call none (map_get d "owner_required")) "</dd>"
+                      "<dt>Last tick</dt><dd>" (call none (map_get d "last_tick_at")) "</dd>"
+                      "<dt>Last error</dt><dd>" (call none (map_get d "last_error")) "</dd>"
+                      "<dt>Failures</dt><dd>" (call none (map_get d "failure_count")) "</dd>"
+                      "<dt>Authority</dt><dd>" (call none (map_get d "authority")) "</dd>"
+                      "<dt>Stopped reason</dt><dd>" (call none (map_get d "stopped_reason")) "</dd>"
+                      "<dt>Objective</dt><dd>" (call none (map_get d "objective")) "</dd>"
+                      "<dt>Published</dt><dd>" (call none (map_get d "published_at")) "</dd>"
+                      "<dt>Read channel</dt><dd>" (call none (map_get d "read_channel")) "</dd>"
+                      "<dt>Tip SHA</dt><dd>" (call none (map_get d "tip_sha")) "</dd>"
+                      "<dt>Tip ref</dt><dd>" (call none (map_get d "tip_ref")) "</dd>"
+                      "<dt>Source URL</dt><dd>" (call none (map_get d "source_url")) "</dd>"
+                      "</dl><h3>Blockers</h3>") ""))
+                    (let (n 0)
+                      (do
+                        (for b (map_get d "blockers")
+                          (let (cls (to_string (map_get b "class")))
+                            (do
+                              (set n (+ n 1))
+                              (set html (str_join (list html
+                                "<div class=\"" (call blocker_class cls) "\" data-class=\"" (attr_escape cls) "\">"
+                                "<span class=\"state\">" (html_escape cls) "</span>"
+                                "<span>" (call none (map_get b "summary")) "</span>"
+                                "<div class=\"item-sub\">" (call none (map_get b "work_item_id"))
+                                " " (call none (map_get b "state"))
+                                " " (call none (map_get b "proposal_id")) "</div></div>") ""))
+                            )
+                          )
+                        )
+                        (if (= n 0)
+                          (set html (str_join (list html "<p class=\"empty\">No blockers in the snapshot.</p>") ""))
+                          (do)
+                        )
+                      )
+                    )
+                  )
+                  (do
+                    (set html (str_join (list html "<p class=\"empty\">") ""))
+                    (if (= reason "SNAPSHOT_ABSENT")
+                      (set html (str_join (list html
+                        "Factory status is unknown. Local drop and Plane git tip both lacked a readable <code>factory/status/remote-snapshot.json</code> (path <code>"
+                        (html_escape (to_string (map_get d "projection_path")))
+                        "</code>). Nothing was started.") ""))
+                      (do)
+                    )
+                    (if (= reason "SNAPSHOT_INVALID")
+                      (set html (str_join (list html "The snapshot file is not valid JSON. Status stays unknown.") ""))
+                      (do)
+                    )
+                    (if (= reason "SCHEMA_MISMATCH")
+                      (set html (str_join (list html "The file is not schema <code>howlplane.factory.status/v1</code>, so it was not displayed.") ""))
+                      (do)
+                    )
+                    (if (= reason "NOT_REDACTED")
+                      (set html (str_join (list html "The file is not marked redacted. HowlBoard refused to display it.") ""))
+                      (do)
+                    )
+                    (if (= reason "")
+                      (set html (str_join (list html "Factory status is unknown.") ""))
+                      (do)
+                    )
+                    (set html (str_join (list html "</p>") ""))
+                  )
+                )
+                (if (= prov "FIXTURE")
+                  (set html (str_join (list html
+                    "<p class=\"factory-note\">Fixture preview. This is not a snapshot published by the Factory host.</p>") ""))
+                  (do)
+                )
+                (if (= (to_string (map_get d "read_channel")) "plane_git")
+                  (set html (str_join (list html
+                    "<p class=\"factory-note\">Live Plane git tip. Projection only — no Factory start, lock, queue, or owner_direction.</p>") ""))
+                  (do)
+                )
+                (if (= (to_string (map_get d "read_channel")) "local_drop")
+                  (set html (str_join (list html
+                    "<p class=\"factory-note\">Local operator drop. Prefer Plane git when the host has published.</p>") ""))
+                  (do)
+                )
+                (return html)
+              )
+            )
+            )
+          )
+        )
+      )
+    )
+  )
+  )
+
+  (export
+  (defun render_pending (d)
+    (type_hint d "dict")
+    (let (html "")
+      (let (markdown (to_string (map_get d "markdown")))
+        (do
+          (if (= (map_get d "eligible") "true")
+            (set html "<p class=\"eligible-yes\">Eligible. BacklogSource would admit this exact Pending row as existing_backlog.</p>")
+            (set html "<p class=\"eligible-no\">Not eligible yet. The preview did not admit anything.</p>")
+          )
+          (let (reasons (map_get d "reasons"))
+            (do
+              (if (= (to_string reasons) "")
+                (do)
+                (do
+                  (set html (str_join (list html "<ul>") ""))
+                  (for reason reasons
+                    (set html (str_join (list html "<li>" (html_escape (to_string reason)) "</li>") ""))
+                  )
+                  (set html (str_join (list html "</ul>") ""))
+                )
+              )
+              (if (= markdown "")
+                (do)
+                (set html (str_join (list html
+                  "<pre class=\"pending-preview\" data-markdown=\"" (attr_escape markdown) "\">"
+                  (html_escape markdown) "</pre>") ""))
+              )
+              (set html (str_join (list html
+                "<p class=\"factory-note\">" (html_escape (to_string (map_get d "note"))) "</p>") ""))
+              (return html)
+            )
+          )
+        )
+      )
+    )
+  )
+  )
+
+)

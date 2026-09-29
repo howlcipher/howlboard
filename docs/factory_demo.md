@@ -8,9 +8,13 @@ queue. `owner_direction` is not an admit path.
 
 1. `make build && make run`, then `make run-frontend` in another terminal.
 2. Open http://localhost:3000 and find the Factory panel.
-3. Click **Refresh factory status** (or load the page). Published status prefers
-   the optional local drop at `data/factory/status/remote-snapshot.json`. When
-   that file is absent, Board fetches Plane's Git tip:
+3. Click **Refresh factory status** (or load the page). The panel requests
+   `GET /api/factory/status/published`. The same read is
+   `GET /api/factory/status?source=published`, a bare `GET /api/factory/status`,
+   or header `X-Howlboard-Factory-Source: published`. A JSON body is not a
+   selector. Published status prefers the optional local drop at
+   `data/factory/status/remote-snapshot.json`. When that file is absent, Board
+   fetches Plane's Git tip:
 
    `https://raw.githubusercontent.com/howlcipher/howlplane/main/factory/status/remote-snapshot.json`
 
@@ -21,8 +25,11 @@ queue. `owner_direction` is not an admit path.
    panel reports provenance `ABSENT` and reason `SNAPSHOT_ABSENT`. State is
    unknown. Nothing was started.
 5. Click **Preview fixture snapshot** to render
-   `data/fixtures/factory/remote-snapshot.json`. The badge says `FIXTURE`.
-   This is not a host publish.
+   `data/fixtures/factory/remote-snapshot.json` via
+   `GET /api/factory/status/fixture`. The badge says `FIXTURE`.
+   This is not a host publish. Query `?source=fixture` and the header
+   `X-Howlboard-Factory-Source: fixture` select the same file. A path segment
+   wins over the query string, and the query string wins over the header.
 6. An operator may still copy a redacted snapshot into the local drop to
    override the Git tip for offline work. A file that is not marked redacted,
    or that uses another schema, is refused.
