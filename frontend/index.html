@@ -31,6 +31,73 @@
             <div id="stats" class="stats"></div>
         </section>
 
+        <section class="panel" aria-labelledby="factory-heading">
+            <div class="panel-head">
+                <h2 id="factory-heading">Factory</h2>
+                <div class="filters">
+                    <button id="factory-refresh" type="button">Refresh factory status</button>
+                    <button id="factory-fixture" type="button">Preview fixture snapshot</button>
+                </div>
+            </div>
+            <div class="factory-grid">
+                <div id="factory-status" class="factory-status" aria-live="polite">
+                    <p class="empty">Factory status has not loaded.</p>
+                </div>
+                <form id="pending-form" class="pending-form" action="#">
+                    <h3>Pending row preview</h3>
+                    <p class="item-sub">
+                        Crafts one exact <code>Pending</code> row for
+                        <code>bugs.md</code>, <code>issues.md</code>, or
+                        <code>improvements.md</code>. Paste it under the first
+                        <code>## Ranked Backlog</code> heading and open a pull
+                        request on a repository the campaign already watches.
+                        This does not start Factory, take the supervisor lock,
+                        or write a queue.
+                    </p>
+                    <div class="field">
+                        <label for="pending-source">Backlog file</label>
+                        <select id="pending-source">
+                            <option value="issues.md">issues.md</option>
+                            <option value="bugs.md">bugs.md</option>
+                            <option value="improvements.md">improvements.md</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="pending-item-id">Item number</label>
+                        <input id="pending-item-id" type="text" value="91011" autocomplete="off">
+                    </div>
+                    <div class="field">
+                        <label for="pending-title">Title</label>
+                        <input id="pending-title" type="text" value="Publish redacted factory status" autocomplete="off">
+                    </div>
+                    <div class="field-row">
+                        <div class="field">
+                            <label for="pending-score">Score</label>
+                            <input id="pending-score" type="text" value="2.0" autocomplete="off">
+                        </div>
+                        <div class="field">
+                            <label for="pending-formula">Formula</label>
+                            <input id="pending-formula" type="text" value="4x1/2" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label for="pending-rationale">Rationale</label>
+                        <input id="pending-rationale" type="text" value="Remote operators cannot see the live campaign." autocomplete="off">
+                    </div>
+                    <div class="field">
+                        <label for="pending-symptom">Symptom</label>
+                        <textarea id="pending-symptom">operators who are not on the Factory host cannot see campaign state.</textarea>
+                    </div>
+                    <div class="field">
+                        <label for="pending-acceptance">Deterministic acceptance</label>
+                        <textarea id="pending-acceptance">`factory/status/remote-snapshot.json` contains `campaign_id`, `state`, `current_dispatch`, blockers, `last_tick_at`, and `last_error`, and the file contains no tokens or absolute host home paths.</textarea>
+                    </div>
+                    <button id="pending-preview-btn" type="button">Preview Pending row</button>
+                    <div id="pending-preview" class="pending-preview" aria-live="polite"></div>
+                </form>
+            </div>
+        </section>
+
         <section aria-labelledby="projects-heading">
             <h2 id="projects-heading" class="section-heading">Workstreams</h2>
             <div id="projects" class="projects"></div>
@@ -89,7 +156,9 @@
                 HowlFrame bytecode; this interface compiled from
                 <code>frontend/app.howl</code> through the HowlFrame JavaScript backend.
                 Authority, evidence, verification and outcome vocabulary is reused from
-                HowlChangeOps, HowlPlane and HowlRelay.
+                HowlChangeOps, HowlPlane and HowlRelay. Factory status is a read of
+                the redacted <code>howlplane.factory.status/v1</code> snapshot.
+                The Pending preview does not admit work.
             </p>
         </footer>
     </div>

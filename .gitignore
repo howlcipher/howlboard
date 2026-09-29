@@ -5,4 +5,6 @@ server.hfbc
 howlboard_missions.json
 howlboard_timeline.json
 build/
+# Operator drop of the redacted Plane snapshot. Not published by Board.
+data/factory/status/remote-snapshot.json
 docs/app.js

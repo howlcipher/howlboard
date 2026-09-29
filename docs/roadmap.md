@@ -4,6 +4,13 @@ Ordered by what most limits the product today.
 
 ## Next
 
+**Read the published Factory artifact from Git.** The status panel reads a
+local drop of `factory/status/remote-snapshot.json`. Once the Factory host
+publishes that file, Board can fetch the Plane copy directly. That is still a
+read. It is not a second Factory and it is not a new admit path.
+
+
+
 **Real ChangeOps approvals.** Replace HowlBoard's local grant with the
 HowlChangeOps approval path: an HMAC-SHA256 signature over a decision digest,
 with verification on read. This makes `ENVELOPE_TAMPERED` meaningful and turns
