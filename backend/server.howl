@@ -188,6 +188,7 @@
   ; Fail-closed on non-list values and non-string elements. Informational only —
   ; not ordering, authority, scheduling, or completion gates.
   (defun validate_depends_on (raw)
+    (type_hint raw "any")
     (type_hint return "dict")
     (if (= (to_string raw) "")
       (return (dict ("ok" "true") ("deps" (list))))
@@ -464,7 +465,7 @@
                         ("last_tick_at" "")
                         ("last_successful_tick_at" "")
                         ("last_error" "")
-                        ("failure_count" (to_int (call plain (map_get doc "failure_count"))))
+                        ("failure_count" (if (call blank (map_get doc "failure_count")) 0 (to_int (call plain (map_get doc "failure_count")))))
                         ("stopped_reason" "")
                         ("objective" "")
                         ("target_mode" "")
