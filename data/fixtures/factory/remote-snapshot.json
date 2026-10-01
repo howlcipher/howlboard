@@ -1,0 +1,39 @@
+{
+  "schema": "howlplane.factory.status/v1",
+  "redacted": true,
+  "published_at": "2026-09-29T01:00:00+00:00",
+  "campaign_id": "abc123",
+  "mission_campaign_id": "2026-09-27-continuous-improvement",
+  "repository": "howlcipher/howlplane",
+  "state": "waiting_for_work",
+  "current_dispatch": "idle",
+  "current_work_item_id": null,
+  "blockers": [
+    {
+      "class": "OWNER_REQUIRED",
+      "summary": "authority envelope is not configured"
+    },
+    {
+      "class": "BLOCKED",
+      "work_item_id": "WI-parked",
+      "state": "blocked",
+      "summary": "needs owner review"
+    },
+    {
+      "class": "DEFERRED",
+      "work_item_id": "WI-later",
+      "state": "deferred",
+      "summary": "deferred until the next campaign pass"
+    }
+  ],
+  "owner_required": true,
+  "last_tick_at": "2026-09-29T00:00:00+00:00",
+  "last_successful_tick_at": "2026-09-29T00:00:01+00:00",
+  "last_error": null,
+  "failure_count": 0,
+  "stopped_reason": null,
+  "objective": "continuous improvement",
+  "target_mode": null,
+  "run_mode": null,
+  "authority": "not configured"
+}

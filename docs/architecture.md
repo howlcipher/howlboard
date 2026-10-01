@@ -7,7 +7,7 @@ Browser
   frontend/app.howl ─┬─(HowlFrame JS backend)──>  frontend/app.js
   frontend/mission_view.howl  (module, shared)
   docs/demo.howl    ─┴─(HowlFrame JS backend)──>  docs/demo.js  (published, read-only)
-        |  fetch, JSON bodies only
+        |  fetch; factory status is GET with a path segment
         v
 HowlFrame bytecode VM   -allow-caps network,database,filesystem
   backend/server.howl  --(-compile-bc)-->  backend/server.hfbc
@@ -23,6 +23,12 @@ tools/ledger_import/ledger_import.howl  (cli_app)
         |
 HowlPlane control plane   logs/control_plane/evidence_ledger.jsonl
                           schema ai.evidence_entry/v1
+        |
+        |  redacted snapshot, read on demand
+        v
+data/factory/status/remote-snapshot.json
+                          schema howlplane.factory.status/v1
+                          Plane artifact factory/status/remote-snapshot.json
 ```
 
 Nothing in this diagram is hand-written Go or JavaScript. `howlframe_bin` is
@@ -69,18 +75,21 @@ would misrepresent what the VM can do. `ledger_import` is a `cli_app` run
 against a slice with a raised instruction ceiling. It writes the same
 `file://` stores the server reads, so the server must be stopped first.
 
-**RPC-shaped endpoints, not REST.** Routing is literal-path-only and no opcode
-exposes query parameters, path parameters or request headers. Every addressable
-operation is therefore a POST carrying a JSON body, including reads:
-`/api/missions/get` takes `{"id": "..."}`. `req_method` is available and is used
-for OPTIONS preflight.
+**Mission endpoints are still RPC-shaped.** `/api/missions/get` takes
+`{"id": "..."}` in a POST body. Factory status is not: the panel loads
+`GET /api/factory/status/{source}`, and the same selector can be `?source=` or
+the `X-Howlboard-Factory-Source` header. Path wins, then query, then header.
+A missing selector reads as published. `req_method` is still used for OPTIONS
+preflight. The pending preview remains a POST because it submits a row.
 
 **Escaping is explicit, and context decides whether it is enough.** The JS
-backend's `set_html` writes `innerHTML` and there is no escaping primitive, so
-`esc` is built from `str_split`/`str_join` and applied to every interpolated
-value. It escapes `&`, `<`, `>`, `"` and `'`.
+backend's `set_html` writes `innerHTML`. Mission rendering still uses `esc`,
+built from `str_split`/`str_join`, which encodes `&`, `<`, `>`, `"` and `'`
+(`"` as `&quot;`). The Factory panel uses `html_escape` for text and
+`attr_escape` for quoted attributes. Those two encode the same five characters
+as Go's `html.EscapeString` (`"` as `&#34;`).
 
-Applying it everywhere is necessary and was not sufficient. Mission rows used to
+Encoding the five characters is necessary and was not sufficient. Mission rows used to
 carry `onclick="window.open_mission('<esc id>')"`, which places the value inside
 a JavaScript string literal. The HTML parser decodes entities in an attribute
 before JavaScript parses it, so an escaped quote becomes a real quote, closes the

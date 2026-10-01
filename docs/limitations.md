@@ -27,6 +27,15 @@ Consequently `ENVELOPE_TAMPERED` is never produced — nothing is verified — a
 `OUTSIDE_ENVELOPE_SCOPE` is never produced, because HowlBoard has no scope
 model of its own.
 
+## Factory surface is a projection and a paste preview
+
+HowlBoard can show a redacted Factory snapshot and preview an exact `Pending`
+backlog row. It does not publish that snapshot, start `howlplane factory start`,
+take the supervisor lock, write `issues.md` / `bugs.md` / `improvements.md`, or
+accept `owner_direction` or a factory queue as an admit path. The host copy at
+`data/factory/status/remote-snapshot.json` is absent until an operator places
+the Plane artifact there. See [the factory demo note](factory_demo.md).
+
 ## Read-mostly relationship with the ecosystem
 
 HowlBoard observes. It does not dispatch work to HowlPlane, does not execute
@@ -55,8 +64,10 @@ flows through the real interface; they are not a rich view of past work.
 
 ## Interface constraints inherited from the framework
 
-- Every endpoint is a POST with a JSON body, including reads, because routing
-  is literal-path-only and no opcode exposes query or path parameters.
+- Mission reads are still POST bodies. `/api/missions/get` takes `{"id": "..."}`.
+  Factory status is the exception: `GET /api/factory/status`, `?source=`,
+  `/api/factory/status/{source}`, and the `X-Howlboard-Factory-Source` header.
+  The pending preview stays a POST because it submits a row.
 - The server port is a compile-time literal in `server.howl`; it cannot be set
   from the environment.
 - There is no pagination. The mission list and the audit feed are returned
@@ -69,8 +80,11 @@ flows through the real interface; they are not a rich view of past work.
   `state`, `authority` and `outcome` are set at creation or import.
 - No search.
 - The audit feed is capped only by what the server returns.
-- Dependencies between missions (`depends_on`) are in the model but are neither
-  populated nor rendered.
+- Mission `depends_on` is informational only: create/API and the shared mission
+  view can set and show dependency IDs as navigable controls that open the
+  referenced mission, but HowlBoard does not order work, enforce authority
+  across missions, detect cycles, gate completion, schedule via HowlPlane,
+  propagate ChangeOps approvals, or draw a dependency graph.
 - The dashboard aggregates agent activity but does not display it; the data is
   in `/api/dashboard` under `agents`.
 

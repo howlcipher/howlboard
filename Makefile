@@ -22,7 +22,7 @@ test: build
 
 ## Run the mission API. Capabilities are explicit and minimal.
 run: build
-	$(HOWLFRAME_BIN) -run-bc -allow-caps network,database,filesystem backend/server.hfbc
+	$(HOWLFRAME_BIN) -run-bc -allow-caps network,database,filesystem,environment backend/server.hfbc
 
 ## Serve the compiled interface.
 run-frontend:

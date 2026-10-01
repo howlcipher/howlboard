@@ -12,6 +12,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -168,6 +169,25 @@ func get(t *testing.T, path string) (int, map[string]any) {
 	t.Helper()
 	status, _, body := request(t, http.MethodGet, path, "")
 	return status, decodeObject(t, body)
+}
+
+func getHeader(t *testing.T, path, name, value string) (int, map[string]any) {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodGet, baseURL()+path, nil)
+	if err != nil {
+		t.Fatalf("build GET %s: %v", path, err)
+	}
+	req.Header.Set(name, value)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("send GET %s: %v", path, err)
+	}
+	defer resp.Body.Close()
+	responseBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read GET %s: %v", path, err)
+	}
+	return resp.StatusCode, decodeObject(t, responseBody)
 }
 
 func decodeObject(t *testing.T, body []byte) map[string]any {
@@ -402,6 +422,10 @@ func TestMissionAPIContract(t *testing.T) {
 			{`{"title":"No project"}`, "MISSING_FIELD"},
 			{`{"title":"Bad","project":"HowlFrame","priority":"URGENT"}`, "INVALID_PRIORITY"},
 			{`{not json`, "INVALID_JSON"},
+			{`{"title":"Deps","project":"HowlBoard","depends_on":"HF-412"}`, "INVALID_DEPENDS_ON"},
+			{`{"title":"Deps","project":"HowlBoard","depends_on":{"id":"HF-412"}}`, "INVALID_DEPENDS_ON"},
+			{`{"title":"Deps","project":"HowlBoard","depends_on":[1,2]}`, "INVALID_DEPENDS_ON"},
+			{`{"title":"Deps","project":"HowlBoard","depends_on":["HF-412",true]}`, "INVALID_DEPENDS_ON"},
 		}
 		for _, testCase := range cases {
 			status, body := post(t, "/api/missions/create", testCase.payload)
@@ -444,6 +468,86 @@ func TestMissionAPIContract(t *testing.T) {
 		status, notFound := post(t, "/api/missions/get", fmt.Sprintf(`{"id":%q}`, id))
 		if status != http.StatusNotFound || notFound["error"] != "MISSION_NOT_FOUND" {
 			t.Fatalf("get deleted mission = %d %v", status, notFound)
+		}
+	})
+
+	t.Run("depends_on create round-trips through get", func(t *testing.T) {
+		status, created := post(t, "/api/missions/create",
+			`{"title":"Dependent mission","project":"HowlBoard","priority":"LOW","depends_on":["HF-412","CO-118"]}`)
+		if status != http.StatusCreated {
+			t.Fatalf("create with depends_on = %d: %v", status, created)
+		}
+		id := created["id"].(string)
+		rawDeps, ok := created["depends_on"].([]any)
+		if !ok {
+			t.Fatalf("create response depends_on is %T, want array", created["depends_on"])
+		}
+		if len(rawDeps) != 2 || rawDeps[0] != "HF-412" || rawDeps[1] != "CO-118" {
+			t.Fatalf("create response depends_on = %v", rawDeps)
+		}
+
+		got := mission(t, id)
+		roundTrip, ok := got["depends_on"].([]any)
+		if !ok {
+			t.Fatalf("get depends_on is %T, want array", got["depends_on"])
+		}
+		if len(roundTrip) != 2 || roundTrip[0] != "HF-412" || roundTrip[1] != "CO-118" {
+			t.Fatalf("get depends_on = %v, want [HF-412 CO-118]", roundTrip)
+		}
+
+		status, _ = post(t, "/api/missions/delete", fmt.Sprintf(`{"id":%q}`, id))
+		if status != http.StatusOK {
+			t.Fatalf("cleanup delete = %d", status)
+		}
+	})
+
+	t.Run("depends_on omitted and empty list mean no dependencies", func(t *testing.T) {
+		status, created := post(t, "/api/missions/create",
+			`{"title":"No deps omitted","project":"HowlBoard","priority":"LOW"}`)
+		if status != http.StatusCreated {
+			t.Fatalf("create omitted depends_on = %d: %v", status, created)
+		}
+		idOmitting := created["id"].(string)
+		omitted := mission(t, idOmitting)
+		raw, ok := omitted["depends_on"].([]any)
+		if !ok {
+			t.Fatalf("omitted depends_on stored as %T, want empty array", omitted["depends_on"])
+		}
+		if len(raw) != 0 {
+			t.Fatalf("omitted depends_on = %v, want empty", raw)
+		}
+
+		status, created = post(t, "/api/missions/create",
+			`{"title":"No deps empty","project":"HowlBoard","priority":"LOW","depends_on":[]}`)
+		if status != http.StatusCreated {
+			t.Fatalf("create empty depends_on = %d: %v", status, created)
+		}
+		idEmpty := created["id"].(string)
+		empty := mission(t, idEmpty)
+		raw, ok = empty["depends_on"].([]any)
+		if !ok || len(raw) != 0 {
+			t.Fatalf("empty depends_on = %T %v", empty["depends_on"], empty["depends_on"])
+		}
+
+		for _, id := range []string{idOmitting, idEmpty} {
+			status, _ = post(t, "/api/missions/delete", fmt.Sprintf(`{"id":%q}`, id))
+			if status != http.StatusOK {
+				t.Fatalf("cleanup delete %s = %d", id, status)
+			}
+		}
+	})
+
+	t.Run("DEMO fixture carries informational depends_on", func(t *testing.T) {
+		m := mission(t, "HP-207")
+		if m["provenance"] != "DEMO" {
+			t.Fatalf("HP-207 provenance = %v, want DEMO", m["provenance"])
+		}
+		deps, ok := m["depends_on"].([]any)
+		if !ok || len(deps) == 0 {
+			t.Fatalf("HP-207 depends_on = %v, want non-empty list", m["depends_on"])
+		}
+		if deps[0] != "HF-412" {
+			t.Fatalf("HP-207 depends_on[0] = %v, want HF-412", deps[0])
 		}
 	})
 
@@ -537,6 +641,7 @@ func TestHandlerAttributesInterpolateNoValues(t *testing.T) {
 	sources := []string{
 		filepath.Join(root, "frontend", "mission_view.howl"),
 		filepath.Join(root, "frontend", "app.howl"),
+		filepath.Join(root, "frontend", "factory_view.howl"),
 		filepath.Join(root, "docs", "demo.howl"),
 	}
 	// Matches an on<event> attribute whose value is not closed before an
@@ -573,5 +678,966 @@ func TestEscapeFunctionCoversQuoteCharacters(t *testing.T) {
 		if !strings.Contains(string(content), entity) {
 			t.Errorf("esc does not produce %s, so %s survives into the output", entity, character)
 		}
+	}
+}
+
+// HOWL-007/008: shared mission_view must show navigable depends_on controls when
+// present and omit the dependency block when missing or empty. Compiles a tiny harness that
+// imports the same module as app.howl and docs/demo.howl, then executes it
+// under Node with a DOM stub (the established DOM-shim style).
+func TestDependsOnRender(t *testing.T) {
+	root := repoRoot(t)
+	outDir := t.TempDir()
+	bin := filepath.Join(root, "howlframe_bin")
+	cmd := exec.Command(bin, filepath.Join(root, "frontend", "render_harness.howl"), "-o", outDir)
+	cmd.Dir = root
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("compile render harness: %v\n%s", err, output)
+	}
+	jsPath := filepath.Join(outDir, "app.js")
+	if _, err := os.Stat(jsPath); err != nil {
+		t.Fatalf("compiled harness missing: %v", err)
+	}
+
+	script := `
+const fs = require("fs");
+const code = fs.readFileSync(process.argv[1], "utf8");
+global.window = global;
+global.document = {
+  querySelector: () => ({
+    addEventListener: () => {},
+    classList: { toggle: () => {} },
+    textContent: "",
+    innerHTML: "",
+  }),
+};
+eval(code);
+(async () => {
+  const withDeps = await render_detail_html({
+    id: "HB-TEST",
+    title: "T",
+    description: "D",
+    project: "P",
+    state: "CREATED",
+    priority: "LOW",
+    risk_level: "LOW",
+    task_class: "unclassified",
+    provenance: "DEMO",
+    updated_at: 0,
+    depends_on: ["HF-412", "CO-118"],
+    authority: {},
+    evidence: [],
+    reasoning: {},
+    plan: [],
+    execution: {},
+    verification: [],
+    outcome: "",
+    executor: "",
+  });
+  if (!withDeps.includes("depends-block")) {
+    console.error("missing depends-block when depends_on present");
+    process.exit(1);
+  }
+  if (!withDeps.includes("HF-412") || !withDeps.includes("CO-118")) {
+    console.error("dependency IDs not rendered");
+    process.exit(1);
+  }
+  if (!withDeps.includes("Informational only")) {
+    console.error("missing informational copy");
+    process.exit(1);
+  }
+  // HOWL-008: navigable controls matching mission-row pattern
+  if (!withDeps.includes("depends-link")) {
+    console.error("missing depends-link control");
+    process.exit(1);
+  }
+  if (!withDeps.includes('data-mission-id="HF-412"') || !withDeps.includes('data-mission-id="CO-118"')) {
+    console.error("dependency IDs missing from data-mission-id");
+    process.exit(1);
+  }
+  if (!withDeps.includes('onclick="window.open_mission(this.dataset.missionId)"')) {
+    console.error("missing constant open_mission handler on dependency control");
+    process.exit(1);
+  }
+  if (/onclick="[^"]*HF-412/.test(withDeps) || /onclick='[^']*HF-412/.test(withDeps)) {
+    console.error("dependency ID interpolated into onclick handler source");
+    process.exit(1);
+  }
+  if (/onclick=/.test(withDeps) && /depends_on/.test(withDeps.split("onclick=")[1] || "")) {
+    console.error("depends_on leaked into handler JS");
+    process.exit(1);
+  }
+  // XSS: escaped in text, not raw
+  const xss = await render_detail_html({
+    id: "HB-XSS",
+    title: "T",
+    description: "D",
+    project: "P",
+    state: "CREATED",
+    priority: "LOW",
+    risk_level: "LOW",
+    task_class: "unclassified",
+    provenance: "DEMO",
+    updated_at: 0,
+    depends_on: ["<script>alert(1)</script>"],
+    authority: {},
+    evidence: [],
+    reasoning: {},
+    plan: [],
+    execution: {},
+    verification: [],
+    outcome: "",
+    executor: "",
+  });
+  if (xss.includes("<script>alert(1)</script>")) {
+    console.error("dependency ID was not HTML-escaped");
+    process.exit(1);
+  }
+  if (!xss.includes("&lt;script&gt;")) {
+    console.error("expected escaped script markers in dependency ID");
+    process.exit(1);
+  }
+  if (!xss.includes('data-mission-id="&lt;script&gt;alert(1)&lt;/script&gt;"')) {
+    console.error("hostile ID not escaped inside data-mission-id");
+    process.exit(1);
+  }
+  // Quote-bearing hostile ID must not break out of the attribute
+  const hostile = await render_detail_html({
+    id: "HB-QUOTE",
+    title: "T",
+    description: "D",
+    project: "P",
+    state: "CREATED",
+    priority: "LOW",
+    risk_level: "LOW",
+    task_class: "unclassified",
+    provenance: "DEMO",
+    updated_at: 0,
+    depends_on: ['"><img src=x onerror=alert(1)>', "O'Brien"],
+    authority: {},
+    evidence: [],
+    reasoning: {},
+    plan: [],
+    execution: {},
+    verification: [],
+    outcome: "",
+    executor: "",
+  });
+  if (hostile.includes('data-mission-id=""><img')) {
+    console.error("quote-bearing ID broke out of data-mission-id");
+    process.exit(1);
+  }
+  if (!hostile.includes("&quot;") || !hostile.includes("&#39;")) {
+    console.error("expected escaped quotes in hostile dependency IDs");
+    process.exit(1);
+  }
+  if (/onclick="[^"]*&quot;/.test(hostile) || /onclick="[^"]*O'Brien/.test(hostile)) {
+    console.error("hostile ID reached onclick handler source");
+    process.exit(1);
+  }
+
+  for (const deps of [undefined, [], null, ""]) {
+    const mission = {
+      id: "HB-NONE",
+      title: "T",
+      description: "D",
+      project: "P",
+      state: "CREATED",
+      priority: "LOW",
+      risk_level: "LOW",
+      task_class: "unclassified",
+      provenance: "DEMO",
+      updated_at: 0,
+      authority: {},
+      evidence: [],
+      reasoning: {},
+      plan: [],
+      execution: {},
+      verification: [],
+      outcome: "",
+      executor: "",
+    };
+    if (deps !== undefined) mission.depends_on = deps;
+    const html = await render_detail_html(mission);
+    if (html.includes("depends-block") || html.includes("Depends on")) {
+      console.error("dependency block shown for empty/missing depends_on:", deps);
+      process.exit(1);
+    }
+  }
+  console.log("ok");
+})().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
+`
+	node := exec.Command("node", "-e", script, jsPath)
+	node.Dir = root
+	output, err := node.CombinedOutput()
+	if err != nil {
+		t.Fatalf("render harness failed: %v\n%s", err, output)
+	}
+	if !strings.Contains(string(output), "ok") {
+		t.Fatalf("render harness output = %q", output)
+	}
+}
+
+// Source-level guard: depends_on values must not be interpolated into handler JS.
+func TestDependsOnNeverInHandlerJS(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join(repoRoot(t), "frontend", "mission_view.howl"))
+	if err != nil {
+		t.Fatalf("read mission_view.howl: %v", err)
+	}
+	for number, line := range strings.Split(string(content), "\n") {
+		if strings.Contains(line, "onclick=") && strings.Contains(line, "depends") {
+			t.Errorf("%s:%d puts dependency data into an event handler:\n\t%s",
+				"mission_view.howl", number+1, strings.TrimSpace(line))
+		}
+	}
+}
+
+// HOWL-008: app open_mission get body must use encode_json, not string-concat JSON.
+func TestOpenMissionUsesEncodeJSON(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join(repoRoot(t), "frontend", "app.howl"))
+	if err != nil {
+		t.Fatalf("read app.howl: %v", err)
+	}
+	src := string(content)
+	start := strings.Index(src, "(defun open_mission")
+	if start < 0 {
+		t.Fatal("open_mission not found in app.howl")
+	}
+	rest := src[start:]
+	end := strings.Index(rest[1:], "(defun ")
+	if end < 0 {
+		t.Fatal("could not bound open_mission in app.howl")
+	}
+	body := rest[:end+1]
+	if !strings.Contains(body, "encode_json") {
+		t.Error("open_mission must build the get body with encode_json")
+	}
+	if strings.Contains(body, `{"id":"`) || strings.Contains(body, `"{\"id\":\""`) {
+		t.Error("open_mission must not string-concatenate JSON around the mission id")
+	}
+	if !strings.Contains(body, "Mission not found") {
+		t.Error("open_mission must surface an honest not-found failure")
+	}
+}
+
+// HOWL-008: demo open_mission must report missing targets (fixture path).
+func TestDemoOpenMissionReportsMissing(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join(repoRoot(t), "docs", "demo.howl"))
+	if err != nil {
+		t.Fatalf("read demo.howl: %v", err)
+	}
+	src := string(content)
+	if !strings.Contains(src, "Mission not found") {
+		t.Error("demo open_mission must show an honest not-found state")
+	}
+	if !strings.Contains(src, `(use "../frontend/mission_view.howl" as view)`) &&
+		!strings.Contains(src, `(use "../frontend/mission_view.howl"`) {
+		// Allow either exact form used by the demo.
+		if !strings.Contains(src, "mission_view.howl") {
+			t.Error("demo must keep sharing mission_view.howl")
+		}
+	}
+}
+
+// HOWL-008: depends controls must use esc'd data-mission-id + constant handler.
+func TestDependsOnControlUsesDataAttrPattern(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join(repoRoot(t), "frontend", "mission_view.howl"))
+	if err != nil {
+		t.Fatalf("read mission_view.howl: %v", err)
+	}
+	src := string(content)
+	if !strings.Contains(src, "depends-link") {
+		t.Error("mission_view must render depends-link controls")
+	}
+	// Howl source escapes quotes as \"; match the attribute name + esc call + constant handler.
+	if !strings.Contains(src, "data-mission-id=") || !strings.Contains(src, "(call esc dep)") {
+		t.Error("depends controls must place esc(dep) in data-mission-id")
+	}
+	if !strings.Contains(src, "window.open_mission(this.dataset.missionId)") {
+		t.Error("depends controls must use the constant open_mission handler")
+	}
+	// Inert <code>-only deps must be gone.
+	if strings.Contains(src, "<li><code>") && strings.Contains(src, "depends") {
+		// Narrow: the depends loop must not emit inert code-only items.
+		for number, line := range strings.Split(src, "\n") {
+			if strings.Contains(line, "<li><code>") && strings.Contains(line, "esc dep") {
+				t.Errorf("mission_view.howl:%d still renders inert code-only depends_on:\n\t%s",
+					number+1, strings.TrimSpace(line))
+			}
+		}
+	}
+}
+
+// Factory surface: redacted status projection plus an exact Pending row.
+// Mirrors BacklogSource row parsing enough to lock the admit contract.
+
+const goldenPendingRow = "| 91011 | [Publish redacted factory status](#91011-publish-redacted-factory-status) | Pending | 2.0 (4x1/2) | Remote operators cannot see the live campaign. |"
+
+const goldenPendingDetail = "### 91011. Publish redacted factory status\n\nSymptom: operators who are not on the Factory host cannot see campaign state.\n\nDeterministic acceptance: `factory/status/remote-snapshot.json` contains `campaign_id`, `state`, `current_dispatch`, blockers, `last_tick_at`, and `last_error`, and the file contains no tokens or absolute host home paths."
+
+func parseRankedRow(row string) (id, title, status, score, rationale, anchor string, err error) {
+	if !regexp.MustCompile(`^\|\s*\d+\s*\|`).MatchString(row) {
+		return "", "", "", "", "", "", fmt.Errorf("row does not match BacklogSource row pattern")
+	}
+	parts := strings.Split(row, "|")
+	if len(parts) < 3 {
+		return "", "", "", "", "", "", fmt.Errorf("row has no cells")
+	}
+	var cells []string
+	for _, cell := range parts[1 : len(parts)-1] {
+		cells = append(cells, strings.TrimSpace(cell))
+	}
+	if len(cells) < 5 {
+		return "", "", "", "", "", "", fmt.Errorf("got %d cells, want at least 5", len(cells))
+	}
+	link := regexp.MustCompile(`^\[(.+?)\]\((#[^)]*)\)$`)
+	match := link.FindStringSubmatch(cells[1])
+	if match == nil {
+		return "", "", "", "", "", "", fmt.Errorf("title cell %q is not a backlog link", cells[1])
+	}
+	scoreMatch := regexp.MustCompile(`^\s*([0-9]+(?:\.[0-9]+)?)`).FindStringSubmatch(cells[3])
+	if scoreMatch == nil {
+		return "", "", "", "", "", "", fmt.Errorf("score cell %q has no leading number", cells[3])
+	}
+	return cells[0], match[1], cells[2], scoreMatch[1], cells[len(cells)-1], match[2], nil
+}
+
+func writePublishedSnapshot(t *testing.T, body string) string {
+	t.Helper()
+	path := filepath.Join(repoRoot(t), "data", "factory", "status", "remote-snapshot.json")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatalf("mkdir snapshot dir: %v", err)
+	}
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatalf("write snapshot: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.Remove(path)
+	})
+	return path
+}
+
+func TestFactoryRemoteSurface(t *testing.T) {
+	var stubBody = []byte(`{"error":"missing"}`)
+	var tipBody = []byte(`{"sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}`)
+	stub := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/tip":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write(tipBody)
+		case "/remote-snapshot.json":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write(stubBody)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(stub.Close)
+	t.Setenv("HOWLBOARD_FACTORY_SNAPSHOT_URL", stub.URL+"/remote-snapshot.json")
+	t.Setenv("HOWLBOARD_FACTORY_TIP_URL", stub.URL+"/tip")
+
+	startServer(t, "network,database,filesystem,environment", true)
+	published := filepath.Join(repoRoot(t), "data", "factory", "status", "remote-snapshot.json")
+	if err := os.Remove(published); err != nil && !os.IsNotExist(err) {
+		t.Fatalf("clear published snapshot: %v", err)
+	}
+
+	t.Run("missing snapshot is an unknown state", func(t *testing.T) {
+		stubBody = []byte(`{"error":"missing"}`)
+		status, _, raw := request(t, http.MethodGet, "/api/factory/status", "")
+		if status != http.StatusOK {
+			t.Fatalf("status = %d, body %s", status, raw)
+		}
+		body := decodeObject(t, raw)
+		if body["present"] != "false" || body["reason"] != "SNAPSHOT_ABSENT" || body["provenance"] != "ABSENT" {
+			// Stub returns non-schema JSON; Board may classify as INVALID after fetch.
+			if body["present"] != "false" || (body["reason"] != "SNAPSHOT_ABSENT" && body["reason"] != "SNAPSHOT_INVALID" && body["reason"] != "SCHEMA_MISMATCH") {
+				t.Fatalf("absent projection = %v", body)
+			}
+		}
+		if body["schema"] != "howlplane.factory.status/v1" {
+			t.Fatalf("schema = %v", body["schema"])
+		}
+		if body["artifact"] != "factory/status/remote-snapshot.json" {
+			t.Fatalf("artifact = %v", body["artifact"])
+		}
+		if body["state"] != "unknown" {
+			t.Fatalf("state = %v, want unknown", body["state"])
+		}
+		if items := listOf(t, body, "blockers"); len(items) != 0 {
+			t.Fatalf("blockers = %v", items)
+		}
+	})
+
+	t.Run("empty source falls back when local drop is absent", func(t *testing.T) {
+		stubBody = []byte(`{"error":"missing"}`)
+		status, body := get(t, "/api/factory/status?source=")
+		if status != http.StatusOK {
+			t.Fatalf("status = %d", status)
+		}
+		if body["present"] != "false" {
+			t.Fatalf("body = %v", body)
+		}
+		if body["read_channel"] != "plane_git" && body["read_channel"] != "" {
+			// absent attach sets plane_git; invalid path may too
+			t.Fatalf("read_channel = %v", body["read_channel"])
+		}
+	})
+
+	t.Run("plane git tip projects when local drop is absent", func(t *testing.T) {
+		stubBody = []byte(`{
+			"schema": "howlplane.factory.status/v1",
+			"redacted": true,
+			"published_at": "2026-09-29T20:52:57.875992+00:00",
+			"campaign_id": "626fbc7d0aed64d2d8dcbd09",
+			"mission_campaign_id": "2026-09-27-continuous-improvement",
+			"repository": "howlcipher/howlplane",
+			"state": "stopped",
+			"current_dispatch": "idle",
+			"current_work_item_id": null,
+			"blockers": [
+				{"class": "OWNER_REQUIRED", "work_item_id": "WI-howlplane-6a668797bb32f9a2", "state": "awaiting_owner", "summary": "orchestrator_final_state:awaiting_human"},
+				{"class": "DEFERRED", "work_item_id": "WI-grocery-optimizer-a22392bf4ca89a29", "state": "deferred", "summary": "NO_ELIGIBLE_PROVIDER_REMAINING"}
+			],
+			"owner_required": true,
+			"last_tick_at": "2026-09-28T21:55:24.292921+00:00",
+			"last_successful_tick_at": "2026-09-28T21:26:04.141954+00:00",
+			"last_error": null,
+			"failure_count": 0,
+			"stopped_reason": "operator_stop",
+			"objective": "continuous improvement",
+			"target_mode": "ecosystem",
+			"run_mode": "continuous",
+			"authority": null
+		}`)
+		tipBody = []byte(`{"sha":"6276da3daa27a273a6f38ed666e4474ff5579339"}`)
+		status, _, raw := request(t, http.MethodGet, "/api/factory/status?source=published", "")
+		if status != http.StatusOK {
+			t.Fatalf("status = %d, body %s", status, raw)
+		}
+		body := decodeObject(t, raw)
+		if body["present"] != "true" || body["provenance"] != "PUBLISHED" || body["read_channel"] != "plane_git" {
+			t.Fatalf("flags = %v", body)
+		}
+		if body["state"] != "stopped" || body["current_dispatch"] != "idle" {
+			t.Fatalf("state/dispatch = %v %v", body["state"], body["current_dispatch"])
+		}
+		if body["mission_campaign_id"] != "2026-09-27-continuous-improvement" {
+			t.Fatalf("mission = %v", body["mission_campaign_id"])
+		}
+		if body["owner_required"] != "true" || body["stopped_reason"] != "operator_stop" {
+			t.Fatalf("owner/stop = %v %v", body["owner_required"], body["stopped_reason"])
+		}
+		if body["tip_sha"] != "6276da3daa27a273a6f38ed666e4474ff5579339" || body["tip_ref"] != "main" {
+			t.Fatalf("tip = %v %v", body["tip_sha"], body["tip_ref"])
+		}
+		if body["projection_path"] != "factory/status/remote-snapshot.json" {
+			t.Fatalf("projection_path = %v", body["projection_path"])
+		}
+		if !strings.Contains(fmt.Sprint(body["source_url"]), "/remote-snapshot.json") {
+			t.Fatalf("source_url = %v", body["source_url"])
+		}
+		classes := map[string]bool{}
+		for _, rawItem := range listOf(t, body, "blockers") {
+			item := rawItem.(map[string]any)
+			classes[item["class"].(string)] = true
+		}
+		if !classes["OWNER_REQUIRED"] || !classes["DEFERRED"] {
+			t.Fatalf("blocker classes = %v", classes)
+		}
+		stubBody = []byte(`{"error":"missing"}`)
+	})
+
+	t.Run("fixture snapshot projects the public contract", func(t *testing.T) {
+		status, _, raw := request(t, http.MethodGet, "/api/factory/status/fixture", "")
+		if status != http.StatusOK {
+			t.Fatalf("status = %d, body %s", status, raw)
+		}
+		if strings.Contains(string(raw), "recent_completed") || strings.Contains(string(raw), "workspace_file") {
+			t.Fatalf("fixture response leaked a private field: %s", raw)
+		}
+		body := decodeObject(t, raw)
+		if body["present"] != "true" || body["provenance"] != "FIXTURE" || body["redacted"] != "true" {
+			t.Fatalf("fixture flags = present %v provenance %v redacted %v", body["present"], body["provenance"], body["redacted"])
+		}
+		if body["schema"] != "howlplane.factory.status/v1" {
+			t.Fatalf("schema = %v", body["schema"])
+		}
+		if body["repository"] != "howlcipher/howlplane" || body["state"] != "waiting_for_work" {
+			t.Fatalf("identity = %v", body)
+		}
+		if body["current_dispatch"] != "idle" || body["campaign_id"] != "abc123" {
+			t.Fatalf("dispatch/campaign = %v %v", body["current_dispatch"], body["campaign_id"])
+		}
+		if body["mission_campaign_id"] != "2026-09-27-continuous-improvement" {
+			t.Fatalf("mission campaign = %v", body["mission_campaign_id"])
+		}
+		if body["owner_required"] != "true" || body["last_error"] != "" {
+			t.Fatalf("owner/error = %v %v", body["owner_required"], body["last_error"])
+		}
+		if body["failure_count"] != float64(0) {
+			t.Fatalf("failure_count = %v", body["failure_count"])
+		}
+		if body["projection_path"] != "data/fixtures/factory/remote-snapshot.json" {
+			t.Fatalf("projection_path = %v", body["projection_path"])
+		}
+		classes := map[string]bool{}
+		for _, rawItem := range listOf(t, body, "blockers") {
+			item := rawItem.(map[string]any)
+			classes[item["class"].(string)] = true
+		}
+		for _, want := range []string{"OWNER_REQUIRED", "BLOCKED", "DEFERRED"} {
+			if !classes[want] {
+				t.Errorf("missing blocker class %s in %v", want, classes)
+			}
+		}
+	})
+
+	t.Run("client path is not a source", func(t *testing.T) {
+		status, body := get(t, "/api/factory/status?source=../etc/passwd")
+		if status != http.StatusBadRequest || body["error"] != "UNKNOWN_SOURCE" {
+			t.Fatalf("status %d body %v", status, body)
+		}
+	})
+
+	t.Run("published snapshot drops private fields and tokens", func(t *testing.T) {
+		writePublishedSnapshot(t, `{
+			"schema": "howlplane.factory.status/v1",
+			"redacted": true,
+			"campaign_id": "abc123",
+			"state": "dispatching",
+			"current_dispatch": "D-live",
+			"last_error": "token=ghp_aaaaaaaaaaaaaaaaaaaa",
+			"owner_required": false,
+			"failure_count": 2,
+			"workspace_file": "/home/alice/dev/howlplane",
+			"recent_completed": [{"output": "SECRET_TASK_OUTPUT"}],
+			"recent_failed": [{"stderr": "RAW_FAILURE_OUTPUT"}],
+			"provider_inventory": [{"token": "sk-cccccccccccccccccccc"}],
+			"blockers": [{"class": "BLOCKED", "summary": "needs review", "note": "BLOCKER_PRIVATE_NOTE"}]
+		}`)
+		status, _, raw := request(t, http.MethodGet, "/api/factory/status/published", "")
+		if status != http.StatusOK {
+			t.Fatalf("status = %d, body %s", status, raw)
+		}
+		text := string(raw)
+		for _, secret := range []string{"SECRET_TASK_OUTPUT", "RAW_FAILURE_OUTPUT", "ghp_", "/home/alice", "sk-", "recent_completed", "workspace_file", "provider_inventory", "BLOCKER_PRIVATE_NOTE"} {
+			if strings.Contains(text, secret) {
+				t.Errorf("response contains %q: %s", secret, text)
+			}
+		}
+		body := decodeObject(t, raw)
+		if body["present"] != "true" || body["provenance"] != "PUBLISHED" {
+			t.Fatalf("flags = %v", body)
+		}
+		if body["read_channel"] != "local_drop" {
+			t.Fatalf("read_channel = %v", body["read_channel"])
+		}
+		if body["state"] != "dispatching" || body["current_dispatch"] != "D-live" {
+			t.Fatalf("state/dispatch = %v %v", body["state"], body["current_dispatch"])
+		}
+		if body["last_error"] != "[redacted]" || body["failure_count"] != float64(2) {
+			t.Fatalf("error/count = %v %v", body["last_error"], body["failure_count"])
+		}
+		classes := map[string]bool{}
+		for _, rawItem := range listOf(t, body, "blockers") {
+			item := rawItem.(map[string]any)
+			classes[item["class"].(string)] = true
+			if _, leaked := item["note"]; leaked {
+				t.Fatalf("blocker kept an unknown key: %v", item)
+			}
+		}
+		if !classes["BLOCKED"] {
+			t.Fatalf("blocker classes = %v", classes)
+		}
+		_ = os.Remove(published)
+	})
+
+	t.Run("invalid snapshot does not crash", func(t *testing.T) {
+		writePublishedSnapshot(t, `{`)
+		status, body := get(t, "/api/factory/status?source=published")
+		if status != http.StatusOK || body["present"] != "false" || body["reason"] != "SNAPSHOT_INVALID" {
+			t.Fatalf("status %d body %v", status, body)
+		}
+		_ = os.Remove(published)
+	})
+
+	t.Run("wrong schema is not displayed", func(t *testing.T) {
+		writePublishedSnapshot(t, `{"schema":"howlplane.factory_queue/v1","redacted":true,"last_error":"SECRET_TASK_OUTPUT"}`)
+		status, _, raw := request(t, http.MethodGet, "/api/factory/status/published", "")
+		body := decodeObject(t, raw)
+		if status != http.StatusOK || body["reason"] != "SCHEMA_MISMATCH" || body["present"] != "false" {
+			t.Fatalf("status %d body %v", status, body)
+		}
+		if strings.Contains(string(raw), "SECRET_TASK_OUTPUT") {
+			t.Fatalf("schema mismatch echoed a field: %s", raw)
+		}
+		_ = os.Remove(published)
+	})
+
+	t.Run("unredacted snapshot is refused", func(t *testing.T) {
+		writePublishedSnapshot(t, `{"schema":"howlplane.factory.status/v1","redacted":false,"last_error":"SECRET_TASK_OUTPUT","state":"idle"}`)
+		status, _, raw := request(t, http.MethodGet, "/api/factory/status?source=published", "")
+		body := decodeObject(t, raw)
+		if status != http.StatusOK || body["reason"] != "NOT_REDACTED" || body["present"] != "false" {
+			t.Fatalf("status %d body %v", status, body)
+		}
+		if strings.Contains(string(raw), "SECRET_TASK_OUTPUT") || body["state"] == "idle" {
+			t.Fatalf("unredacted body was displayed: %s", raw)
+		}
+		_ = os.Remove(published)
+	})
+
+	t.Run("header selects the fixture", func(t *testing.T) {
+		stubBody = []byte(`{"error":"missing"}`)
+		status, body := getHeader(t, "/api/factory/status", "X-Howlboard-Factory-Source", "fixture")
+		if status != http.StatusOK {
+			t.Fatalf("status = %d body %v", status, body)
+		}
+		if body["provenance"] != "FIXTURE" || body["campaign_id"] != "abc123" {
+			t.Fatalf("header did not select the fixture: %v", body)
+		}
+	})
+
+	t.Run("path wins over query", func(t *testing.T) {
+		stubBody = []byte(`{"error":"missing"}`)
+		status, body := get(t, "/api/factory/status/published?source=fixture")
+		if status != http.StatusOK {
+			t.Fatalf("status = %d body %v", status, body)
+		}
+		if body["provenance"] == "FIXTURE" {
+			t.Fatalf("query overrode the path: %v", body)
+		}
+	})
+
+	t.Run("query wins over header", func(t *testing.T) {
+		stubBody = []byte(`{"error":"missing"}`)
+		status, body := getHeader(t, "/api/factory/status?source=published", "X-Howlboard-Factory-Source", "fixture")
+		if status != http.StatusOK {
+			t.Fatalf("status = %d body %v", status, body)
+		}
+		if body["provenance"] == "FIXTURE" {
+			t.Fatalf("header overrode the query: %v", body)
+		}
+	})
+
+	t.Run("post body is not a source", func(t *testing.T) {
+		stubBody = []byte(`{"error":"missing"}`)
+		status, body := post(t, "/api/factory/status", `{"source":"fixture"}`)
+		if status != http.StatusOK {
+			t.Fatalf("status = %d body %v", status, body)
+		}
+		if body["provenance"] == "FIXTURE" || body["campaign_id"] == "abc123" {
+			t.Fatalf("JSON body still selected the fixture: %v", body)
+		}
+	})
+
+	t.Run("unknown path segment is rejected", func(t *testing.T) {
+		status, body := get(t, "/api/factory/status/nope")
+		if status != http.StatusBadRequest || body["error"] != "UNKNOWN_SOURCE" {
+			t.Fatalf("status %d body %v", status, body)
+		}
+	})
+
+	t.Run("nested commit sha locks the tip", func(t *testing.T) {
+		stubBody = []byte(`{
+			"schema": "howlplane.factory.status/v1",
+			"redacted": true,
+			"state": "stopped",
+			"current_dispatch": "idle",
+			"campaign_id": "from-stub"
+		}`)
+		tipBody = []byte(`{"commit":{"sha":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}}`)
+		status, body := get(t, "/api/factory/status?source=published")
+		if status != http.StatusOK {
+			t.Fatalf("status = %d body %v", status, body)
+		}
+		if body["present"] != "true" || body["tip_sha"] != "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" {
+			t.Fatalf("nested tip = present %v sha %v", body["present"], body["tip_sha"])
+		}
+		if body["campaign_id"] != "from-stub" {
+			t.Fatalf("campaign = %v", body["campaign_id"])
+		}
+		stubBody = []byte(`{"error":"missing"}`)
+	})
+
+	golden := `{"item_id":"91011","title":"Publish redacted factory status","score":"2.0","formula":"4x1/2","rationale":"Remote operators cannot see the live campaign.","source_file":"issues.md","status":"Pending — blocked on #88","symptom":"operators who are not on the Factory host cannot see campaign state.","acceptance":"` + "`factory/status/remote-snapshot.json` contains `campaign_id`, `state`, `current_dispatch`, blockers, `last_tick_at`, and `last_error`, and the file contains no tokens or absolute host home paths." + `"}`
+
+	t.Run("pending row matches the Plane table exactly", func(t *testing.T) {
+		status, body := post(t, "/api/factory/pending-row", golden)
+		if status != http.StatusOK {
+			t.Fatalf("status = %d body %v", status, body)
+		}
+		row, _ := body["row"].(string)
+		if row != goldenPendingRow {
+			t.Fatalf("row = %q\nwant %q", row, goldenPendingRow)
+		}
+		if strings.Contains(row, "blocked") {
+			t.Fatalf("status override leaked into the row: %s", row)
+		}
+		id, title, cellStatus, score, rationale, anchor, err := parseRankedRow(row)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if id != "91011" || title != "Publish redacted factory status" || cellStatus != "Pending" {
+			t.Fatalf("parsed id/title/status = %s %s %s", id, title, cellStatus)
+		}
+		if score != "2.0" || rationale != "Remote operators cannot see the live campaign." {
+			t.Fatalf("parsed score/rationale = %s %s", score, rationale)
+		}
+		if anchor != "#91011-publish-redacted-factory-status" {
+			t.Fatalf("anchor = %s", anchor)
+		}
+		if body["eligible"] != "true" || body["origin"] != "existing_backlog" || body["kind"] != "bug" {
+			t.Fatalf("admission flags = %v", body)
+		}
+		if body["status"] != "Pending" || body["backlog_schema"] != "howlplane.backlog_item/v1" {
+			t.Fatalf("status/schema = %v %v", body["status"], body["backlog_schema"])
+		}
+		if body["detail"] != goldenPendingDetail {
+			t.Fatalf("detail = %q", body["detail"])
+		}
+		header, _ := body["table_header"].(string)
+		if header != "| # | Title | Status | Score | Rationale |\n| --- | --- | --- | --- | --- |" {
+			t.Fatalf("table_header = %q", header)
+		}
+		if !strings.HasPrefix(strings.Split(body["detail"].(string), "\n")[0], "### 91011.") {
+			t.Fatalf("detail heading is not a BacklogSource item section: %v", body["detail"])
+		}
+	})
+
+	t.Run("score below the ROI floor is previewed and not eligible", func(t *testing.T) {
+		status, body := post(t, "/api/factory/pending-row", `{"item_id":"7","title":"Live bug","score":"0.4","rationale":"open","source_file":"bugs.md"}`)
+		if status != http.StatusOK {
+			t.Fatalf("status = %d", status)
+		}
+		if body["eligible"] != "false" || body["ok"] != "true" || body["origin"] != "" || body["kind"] != "bug" {
+			t.Fatalf("flags = %v", body)
+		}
+		row := body["row"].(string)
+		_, _, cellStatus, score, _, _, err := parseRankedRow(row)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cellStatus != "Pending" || score != "0.4" {
+			t.Fatalf("parsed status/score = %s %s", cellStatus, score)
+		}
+		reasons := listOf(t, body, "reasons")
+		if len(reasons) != 1 || reasons[0] != "BELOW_ROI_FLOOR" {
+			t.Fatalf("reasons = %v", reasons)
+		}
+	})
+
+	t.Run("roi floor boundary is eligible", func(t *testing.T) {
+		status, body := post(t, "/api/factory/pending-row", `{"item_id":"8","title":"Floor","score":"0.5","rationale":"meets floor","source_file":"improvements.md"}`)
+		if status != http.StatusOK || body["eligible"] != "true" || body["kind"] != "improvement" {
+			t.Fatalf("status %d body %v", status, body)
+		}
+	})
+
+	t.Run("unsafe cells and unknown files emit no row", func(t *testing.T) {
+		status, body := post(t, "/api/factory/pending-row", `{"item_id":"1","title":"Has | pipe","score":"2.0","rationale":"ok","source_file":"owner_direction"}`)
+		if status != http.StatusOK {
+			t.Fatalf("status = %d", status)
+		}
+		if body["row"] != "" || body["ok"] != "false" || body["eligible"] != "false" {
+			t.Fatalf("body = %v", body)
+		}
+		joined := fmt.Sprint(body["reasons"])
+		if !strings.Contains(joined, "TITLE_CHARS") || !strings.Contains(joined, "UNKNOWN_SOURCE_FILE") {
+			t.Fatalf("reasons = %v", body["reasons"])
+		}
+	})
+}
+
+func TestFactorySurfaceIsProjectionOnly(t *testing.T) {
+	server, err := os.ReadFile(filepath.Join(repoRoot(t), "backend", "server.howl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := os.ReadFile(filepath.Join(repoRoot(t), "frontend", "app.howl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(server) + "\n" + string(app)
+	for _, forbidden := range []string{"factory start", "owner_direction.json", "/api/factory/queue", "/api/factory/start", "write_file"} {
+		if strings.Contains(src, forbidden) {
+			t.Errorf("factory surface contains %q", forbidden)
+		}
+	}
+	if !strings.Contains(string(server), "/api/factory/status") || !strings.Contains(string(server), "/api/factory/pending-row") {
+		t.Error("factory routes missing from server.howl")
+	}
+	if !strings.Contains(string(server), "/api/factory/status/{source}") {
+		t.Error("factory status must register a {source} path")
+	}
+	for _, op := range []string{"req_query", "req_header", "req_path", "map_keys"} {
+		if !strings.Contains(string(server), op) {
+			t.Errorf("factory surface missing %s", op)
+		}
+	}
+	if !strings.Contains(string(server), `(map_get (map_get doc "commit") "sha")`) {
+		t.Error("tip lock must chain map_get through commit.sha")
+	}
+	if strings.Contains(string(server), `map_get body "source"`) {
+		t.Error("factory status must not read source from the JSON body")
+	}
+	if !strings.Contains(string(app), "encode_json") || !strings.Contains(string(app), "/api/factory/pending-row") {
+		t.Error("pending preview must post encode_json to /api/factory/pending-row")
+	}
+	if !strings.Contains(string(app), "/api/factory/status/") || !strings.Contains(string(app), `"GET"`) {
+		t.Error("factory panel must GET /api/factory/status/{source}")
+	}
+	view, err := os.ReadFile(filepath.Join(repoRoot(t), "frontend", "factory_view.howl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	viewSrc := string(view)
+	for _, op := range []string{"html_escape", "attr_escape", "data-provenance", "data-markdown", "data-class"} {
+		if !strings.Contains(viewSrc, op) {
+			t.Errorf("factory view missing %s", op)
+		}
+	}
+	if strings.Contains(viewSrc, "onclick") {
+		t.Error("factory view must not build an inline handler")
+	}
+}
+
+func TestFactoryViewEscapes(t *testing.T) {
+	root := repoRoot(t)
+	outDir := t.TempDir()
+	bin := filepath.Join(root, "howlframe_bin")
+	cmd := exec.Command(bin, filepath.Join(root, "frontend", "factory_harness.howl"), "-o", outDir)
+	cmd.Dir = root
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("compile factory harness: %v\n%s", err, output)
+	}
+	jsPath := filepath.Join(outDir, "app.js")
+	js, err := os.ReadFile(jsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(js), `howlFrameHTMLEscape("html_escape"`) || !strings.Contains(string(js), `howlFrameHTMLEscape("attr_escape"`) {
+		t.Fatalf("compiled factory view dropped an escape kind")
+	}
+
+	script := `
+const fs = require("fs");
+const code = fs.readFileSync(process.argv[1], "utf8");
+eval(code);
+(async () => {
+  const absent = await render_factory_html({
+    error: "",
+    present: "false",
+    provenance: 'PUB"><script>',
+    reason: "SNAPSHOT_ABSENT",
+    projection_path: "a&b<c",
+    read_channel: "",
+  });
+  if (absent.includes('data-provenance="PUB"><script>')) {
+    console.error("provenance broke out of data-provenance");
+    process.exit(1);
+  }
+  if (!absent.includes('data-provenance="PUB&#34;&gt;&lt;script&gt;"')) {
+    console.error("data-provenance was not attr_escape'd: " + absent);
+    process.exit(1);
+  }
+  if (!absent.includes("PUB&#34;&gt;&lt;script&gt;</span>")) {
+    console.error("provenance text was not html_escape'd: " + absent);
+    process.exit(1);
+  }
+  if (!absent.includes("<code>a&amp;b&lt;c</code>")) {
+    console.error("projection path was not html_escape'd: " + absent);
+    process.exit(1);
+  }
+  if (absent.includes("<script>")) {
+    console.error("raw script tag survived factory status render");
+    process.exit(1);
+  }
+
+  const present = await render_factory_html({
+    error: "",
+    present: "true",
+    provenance: "FIXTURE",
+    reason: "",
+    read_channel: "",
+    campaign_id: "abc",
+    mission_campaign_id: "",
+    repository: "",
+    state: "waiting",
+    current_dispatch: "idle",
+    current_work_item_id: "",
+    owner_required: "false",
+    last_tick_at: "",
+    last_error: "",
+    failure_count: 0,
+    authority: "",
+    stopped_reason: "",
+    objective: "",
+    published_at: "",
+    tip_sha: "",
+    tip_ref: "",
+    source_url: "",
+    blockers: [{
+      class: 'A"B',
+      summary: "<b>secret</b>",
+      work_item_id: "WI",
+      state: "blocked",
+      proposal_id: "P",
+      note: "SHOULD_NOT_RENDER",
+    }],
+  });
+  if (!present.includes('data-class="A&#34;B"')) {
+    console.error("blocker class was not attr_escape'd: " + present);
+    process.exit(1);
+  }
+  if (!present.includes("&lt;b&gt;secret&lt;/b&gt;")) {
+    console.error("blocker summary was not html_escape'd: " + present);
+    process.exit(1);
+  }
+  if (present.includes("SHOULD_NOT_RENDER") || present.includes("<b>")) {
+    console.error("unknown or raw blocker markup rendered: " + present);
+    process.exit(1);
+  }
+
+  const pending = await render_pending_html({
+    eligible: "false",
+    reasons: ["<li>"],
+    markdown: '<script>alert(1)</script>"\'',
+    note: "a&b",
+  });
+  if (pending.includes("<script>alert(1)</script>")) {
+    console.error("pending markdown was not escaped");
+    process.exit(1);
+  }
+  if (!pending.includes('data-markdown="&lt;script&gt;alert(1)&lt;/script&gt;&#34;&#39;"')) {
+    console.error("data-markdown was not attr_escape'd: " + pending);
+    process.exit(1);
+  }
+  if (!pending.includes("&amp;")) {
+    console.error("note was not html_escape'd: " + pending);
+    process.exit(1);
+  }
+  if (/onclick\s*=/.test(pending) || /onclick\s*=/.test(present)) {
+    console.error("factory markup built an inline handler");
+    process.exit(1);
+  }
+  console.log("ok");
+})().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
+`
+	node := exec.Command("node", "-e", script, jsPath)
+	node.Dir = root
+	output, err := node.CombinedOutput()
+	if err != nil {
+		t.Fatalf("factory render harness failed: %v\n%s", err, output)
+	}
+	if !strings.Contains(string(output), "ok") {
+		t.Fatalf("factory render harness output = %q", output)
 	}
 }

@@ -99,6 +99,74 @@ def main():
         "read-only" in index.lower() or "static" in index.lower(),
     )
 
+
+    # 8. HOWL-007: docs must describe shipped informational depends_on, not the old gap.
+    limitations = (ROOT / "docs" / "limitations.md").read_text()
+    roadmap = (ROOT / "docs" / "roadmap.md").read_text()
+    domain = (ROOT / "docs" / "domain_model.md").read_text()
+    mission_view = (ROOT / "frontend" / "mission_view.howl").read_text()
+    check(
+        "limitations no longer claims depends_on is unrendered",
+        "neither populated nor rendered" not in limitations
+        and "neither populated nor" not in limitations,
+    )
+    check(
+        "limitations states informational-only depends_on",
+        "informational" in limitations.lower() and "depends_on" in limitations,
+    )
+    check(
+        "roadmap no longer claims depends_on is unrendered",
+        "neither populated nor" not in roadmap and "informational" in roadmap.lower(),
+    )
+    check(
+        "domain_model documents depends_on",
+        "`depends_on`" in domain and "informational" in domain.lower(),
+    )
+    check(
+        "shared mission view renders depends_on",
+        "depends_on" in mission_view and "Informational only" in mission_view,
+    )
+
+    # 9. HOWL-008: navigable informational depends_on; shared controls + encode_json open path.
+    app = (ROOT / "frontend" / "app.howl").read_text()
+    check(
+        "limitations mentions navigable depends_on",
+        "navigable" in limitations.lower() and "depends_on" in limitations,
+    )
+    check(
+        "roadmap describes navigable informational deps",
+        "navigable" in roadmap.lower() and "informational" in roadmap.lower(),
+    )
+    check(
+        "mission_view depends controls use data-mission-id + constant handler",
+        "depends-link" in mission_view
+        and "data-mission-id" in mission_view
+        and "window.open_mission(this.dataset.missionId)" in mission_view,
+    )
+    check(
+        "app open_mission uses encode_json for get body",
+        "encode_json" in app and "(defun open_mission" in app,
+    )
+
+    # 10. Factory surface stays a projection plus an exact Pending preview.
+    factory_demo = (ROOT / "docs" / "factory_demo.md").read_text()
+    check(
+        "server exposes factory status and pending-row routes",
+        '/api/factory/status' in server and '/api/factory/pending-row' in server,
+    )
+    check(
+        "factory demo describes a missing snapshot and an exact Pending row",
+        "SNAPSHOT_ABSENT" in factory_demo and "Pending" in factory_demo,
+    )
+    check(
+        "factory demo does not add a second admit path",
+        "owner_direction" in factory_demo and "does not start" in factory_demo.lower(),
+    )
+    check(
+        "limitations keep factory start out of Board",
+        "factory start" in limitations and "Pending" in limitations,
+    )
+
     print()
     if FAILURES:
         print(f"{len(FAILURES)} documentation check(s) failed")

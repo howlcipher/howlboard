@@ -18,6 +18,7 @@ Stored at `mission:<id>` in `file://howlboard_missions.json`.
 | `provenance` | HowlBoard — `DEMO`, `LEDGER`, or `OPERATOR` |
 | `origin` | HowlBoard — `control_plane` or `test_fixture`, set on import |
 | `outcome` | HowlPlane ledger terminal actions |
+| `depends_on` | HowlBoard — optional list of mission ID strings; informational and navigable in the shared mission view (not ordering, blocking, approval, or scheduling) |
 
 ## Lifecycle
 
@@ -135,6 +136,45 @@ those strings exist anywhere in the ecosystem. Introducing them would have
 created a vocabulary no other Howl component recognizes, so the ledger's real
 terminals are used instead. If a value judgment distinct from "did it finish"
 is wanted later, it belongs upstream in HowlPlane first.
+
+## Factory status
+
+Read-only projection of HowlPlane `howlplane.factory.status/v1`. The Plane
+artifact is `factory/status/remote-snapshot.json`. HowlBoard reads an operator
+drop of that file at `data/factory/status/remote-snapshot.json`. Until the
+host publishes one, `/api/factory/status` returns `present=false`,
+`reason=SNAPSHOT_ABSENT`, and `state=unknown`.
+
+`POST {"source":"fixture"}` reads `data/fixtures/factory/remote-snapshot.json`
+and labels the result `provenance=FIXTURE`. A file that is missing, invalid
+JSON, the wrong schema, or not `redacted: true` is not rendered as live
+status. Fields outside the public snapshot (task output, workspace paths,
+provider inventory) are dropped. Obvious token shapes in free text are
+replaced with `[redacted]`.
+
+Displayed fields are the published contract: `campaign_id`,
+`mission_campaign_id`, `repository`, `state`, `current_dispatch`, blockers
+(`OWNER_REQUIRED`, `BLOCKED`, `DEFERRED`), `owner_required`, `last_tick_at`,
+and `last_error`.
+
+## Pending backlog row
+
+`/api/factory/pending-row` previews one row for HowlPlane `BacklogSource`.
+The status cell is always exactly `Pending`. The shape matches the ranked
+table in `issues.md`, `bugs.md`, or `improvements.md`:
+
+```
+| # | Title | Status | Score | Rationale |
+| --- | --- | --- | --- | --- |
+| 91011 | [Publish redacted factory status](#91011-publish-redacted-factory-status) | Pending | 2.0 (4x1/2) | Remote operators cannot see the live campaign. |
+```
+
+`bugs.md` and `issues.md` are bug ledgers. `improvements.md` is the
+improvement ledger. A score below the BacklogSource floor of `0.5` is still
+previewed and marked ineligible. The endpoint does not write those files,
+does not set `owner_direction`, and does not start Factory. Admission is a
+pull request that adds the row under the first `## Ranked Backlog` heading
+on a repository the campaign already watches.
 
 ## Timeline
 

@@ -1,0 +1,17 @@
+; Compiles factory_view for the contract test. Not part of the product UI.
+(web_app
+  (use "factory_view.howl" as factory)
+
+  (defun render_factory_html (d)
+    (type_hint d "dict")
+    (return (call factory/render_factory d))
+  )
+
+  (defun render_pending_html (d)
+    (type_hint d "dict")
+    (return (call factory/render_pending d))
+  )
+
+  (export "render_factory_html" render_factory_html)
+  (export "render_pending_html" render_pending_html)
+)

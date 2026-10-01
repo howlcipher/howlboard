@@ -116,6 +116,26 @@ exercised by CI.
 
 ---
 
+## Factory surface
+
+HowlBoard can show the redacted Factory snapshot and preview the exact
+`Pending` row Plane's `BacklogSource` admits. It does not start Factory.
+
+```bash
+make run
+make run-frontend
+```
+
+Open http://localhost:3000. With no snapshot dropped at
+`data/factory/status/remote-snapshot.json`, the Factory panel says status is
+unknown. **Refresh factory status** requests `GET /api/factory/status/published`.
+**Preview fixture snapshot** loads the committed contract fixture from
+`GET /api/factory/status/fixture`. **Preview Pending row** prints a row whose
+status cell is exactly `Pending`, for paste into `issues.md`, `bugs.md`, or
+`improvements.md`.
+
+The short walkthrough is [docs/factory_demo.md](docs/factory_demo.md).
+
 ## Layout
 
 | Path | What it is |

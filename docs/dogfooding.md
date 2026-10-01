@@ -264,7 +264,10 @@ pass is to report it with evidence, not to attempt it opportunistically.
 
 ## Remaining gaps, not fixed
 
-Ordered by how much they cost.
+Ordered by how much they cost. Items 2, 3, 4, 8, and 9 have since landed in
+HowlFrame and are used on the Factory path; see the last section of this
+journal. They are still the shape of the rest of HowlBoard, which this list
+describes.
 
 **1. No module system in the bytecode target.** `module`, `use` and `export` are
 unsupported there, so `backend/server.howl` is necessarily one 665-line file and
@@ -382,3 +385,30 @@ with a language that is not yet comfortable for application-sized programs on
 its most important target. This exercise made it meaningfully better in both
 respects, and the reason it could is that the application was real enough to
 fail against — including once, late, against a claim in this very document.
+
+## Factory path consumes Frame #102–#105
+
+The gaps above were closed in HowlFrame (`req_query` / `req_header` /
+`req_path`, the `map_get` miss sentinel, chained `map_get`, `map_keys`,
+`html_escape` / `attr_escape`). HowlBoard's Factory status and Pending preview
+are the first product path that uses them. The rest of the program is
+unchanged: mission reads are still POST bodies, and mission HTML still goes
+through `esc`.
+
+What moved:
+
+- Factory status no longer reads `{"source":...}` from a POST body. The
+  selector is `/api/factory/status/{source}`, then `?source=`, then
+  `X-Howlboard-Factory-Source`. A missing selector is `""`, which means
+  published.
+- Blocker and status text fields are copied by walking `map_keys` and an
+  allowlist. A key that is not on the list does not reach the response.
+- Tip JSON may be `{"sha":"..."}` or `{"commit":{"sha":"..."}}`. The nested
+  read is chained `map_get`, and it runs only after the intermediate is
+  present, because a miss is `""` and `map_get` of that string is
+  `TYPE_ERROR`.
+- The Factory panel encodes text with `html_escape` and quoted attributes
+  with `attr_escape`. It does not build an inline handler from those values.
+
+This did not start Factory, take a lock, write a queue, or trust
+`owner_direction`. `/api/projects` was left as a list on purpose.

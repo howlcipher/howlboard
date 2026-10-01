@@ -8,13 +8,14 @@
 (web_app
 
   (use "mission_view.howl" as view)
+  (use "factory_view.howl" as factory)
 
   (defun api_url (path)
     (return (str_join (list "http://localhost:8080" path) ""))
   )
 
-  ; No HTML-escaping primitive exists, so escaping is built from str_split and
-  ; str_join. The ampersand pass must run first or the later passes double-encode.
+  ; Mission rendering still uses view/esc, built from str_split and str_join.
+  ; The Factory panel uses html_escape and attr_escape (factory_view.howl).
 
 
 
@@ -56,6 +57,9 @@
       )
     )
   )
+
+  ; Factory status is a projection. Missing snapshots render as unknown.
+  ; Markup comes from factory_view.howl.
 
   ; --------------------------------------------------------- mission list
 
@@ -207,28 +211,80 @@
 
   (defun open_mission (id)
     (type_hint return "void")
-    (try_let (raw (fetch (call api_url "/api/missions/get") "POST" (str_join (list "{\"id\":\"" id "\"}") "")))
+    ; Lookup body via encode_json — never string-concatenate JSON around the id.
+    (try_let (raw (fetch (call api_url "/api/missions/get") "POST" (encode_json (dict ("id" id)))))
       (catch err (call show_error "Cannot load that mission."))
       (try_let (m (parse_json Any raw))
         (catch perr (call show_error "Mission response was not valid JSON."))
         (do
-          (let (html (call view/render_detail m))
-          (do
-            (let (id (call view/esc (map_get m "id")))
-              (set html (str_join (list html
-                "<div class=\"stage\"><div class=\"actions\">"
-                "<button type=\"button\" data-mission-id=\"" id "\""
-                " onclick=\"window.approve_mission(this.dataset.missionId)\">Grant approval</button>"
-                "<button type=\"button\" data-mission-id=\"" id "\""
-                " onclick=\"window.reject_mission(this.dataset.missionId)\">Reject</button>"
-                "<button type=\"button\" data-mission-id=\"" id "\""
-                " onclick=\"window.advance_mission(this.dataset.missionId)\">Advance to EXECUTING</button>"
-                "</div></div>") ""))
+          (let (err_code (to_string (map_get m "error")))
+            (if (= err_code "")
+              (do
+                (call show_error "")
+                (let (html (call view/render_detail m))
+                  (do
+                    (let (mid (call view/esc (map_get m "id")))
+                      (set html (str_join (list html
+                        "<div class=\"stage\"><div class=\"actions\">"
+                        "<button type=\"button\" data-mission-id=\"" mid "\""
+                        " onclick=\"window.approve_mission(this.dataset.missionId)\">Grant approval</button>"
+                        "<button type=\"button\" data-mission-id=\"" mid "\""
+                        " onclick=\"window.reject_mission(this.dataset.missionId)\">Reject</button>"
+                        "<button type=\"button\" data-mission-id=\"" mid "\""
+                        " onclick=\"window.advance_mission(this.dataset.missionId)\">Advance to EXECUTING</button>"
+                        "</div></div>") ""))
+                    )
+                    (set_html (dom_query "#mission-detail") html)
+                    (set_text (dom_query "#detail-heading") (str_join (list "Mission detail / " id) ""))
+                  )
+                )
+              )
+              (do
+                ; Honest missing/unknown target — never silent no-op.
+                (call show_error (str_join (list "Mission not found: " id) ""))
+                (set_html (dom_query "#mission-detail")
+                  (str_join (list "<p class=\"item-sub\">Mission not found.</p>") ""))
+                (set_text (dom_query "#detail-heading") (str_join (list "Mission detail / " id) ""))
+              )
             )
-            (set_html (dom_query "#mission-detail") html)
           )
         )
-          (set_text (dom_query "#detail-heading") (str_join (list "Mission detail / " id) ""))
+      )
+    )
+  )
+
+  (defun load_factory (source)
+    (type_hint return "void")
+    ; Path segment, not a JSON body. published and fixture are whole segments.
+    (try_let (raw (fetch (call api_url (str_join (list "/api/factory/status/" source) "")) "GET"))
+      (catch err (set_html (dom_query "#factory-status")
+        "<p class=\"empty\">Factory status API is unreachable. Nothing was started.</p>"))
+      (try_let (d (parse_json Any raw))
+        (catch perr (set_html (dom_query "#factory-status")
+          "<p class=\"empty\">Factory status response was not valid JSON.</p>"))
+        (set_html (dom_query "#factory-status") (call factory/render_factory d))
+      )
+    )
+  )
+
+  (defun preview_pending ()
+    (type_hint return "void")
+    (let (payload (encode_json (dict
+          ("item_id" (dom_value (dom_query "#pending-item-id")))
+          ("title" (dom_value (dom_query "#pending-title")))
+          ("score" (dom_value (dom_query "#pending-score")))
+          ("formula" (dom_value (dom_query "#pending-formula")))
+          ("rationale" (dom_value (dom_query "#pending-rationale")))
+          ("source_file" (dom_value (dom_query "#pending-source")))
+          ("symptom" (dom_value (dom_query "#pending-symptom")))
+          ("acceptance" (dom_value (dom_query "#pending-acceptance"))))))
+      (try_let (raw (fetch (call api_url "/api/factory/pending-row") "POST" payload))
+        (catch err (set_html (dom_query "#pending-preview")
+          "<p class=\"empty\">Pending preview could not reach the mission API.</p>"))
+        (try_let (d (parse_json Any raw))
+          (catch perr (set_html (dom_query "#pending-preview")
+            "<p class=\"empty\">Pending preview response was not valid JSON.</p>"))
+          (set_html (dom_query "#pending-preview") (call factory/render_pending d))
         )
       )
     )
@@ -241,6 +297,7 @@
       (call load_projects)
       (call load_missions)
       (call load_feed)
+      (call load_factory "published")
     )
   )
 
@@ -301,6 +358,9 @@
 
   (on_event (dom_query "#seed-btn") "click" (lambda (e) (call seed_board)))
   (on_event (dom_query "#refresh-btn") "click" (lambda (e) (call refresh_all)))
+  (on_event (dom_query "#factory-refresh") "click" (lambda (e) (call load_factory "published")))
+  (on_event (dom_query "#factory-fixture") "click" (lambda (e) (call load_factory "fixture")))
+  (on_event (dom_query "#pending-preview-btn") "click" (lambda (e) (call preview_pending)))
   (on_event (dom_query "#filter-state") "change" (lambda (e) (call load_missions)))
   (on_event (dom_query "#filter-project") "change" (lambda (e) (call load_missions)))
   (on_event (dom_query "#theme-toggle") "click" (lambda (e)
