@@ -1,4 +1,4 @@
-HOWLFRAME_BIN ?= ./howlframe_bin
+HOWLFRAME_BIN ?= $(shell if [ -x ./howlframe_bin ]; then echo ./howlframe_bin; elif command -v howlframe >/dev/null 2>&1; then command -v howlframe; else echo ./howlframe_bin; fi)
 PORT ?= 8080
 FRONTEND_PORT ?= 3000
 
