@@ -106,6 +106,10 @@ make import LEDGER=/tmp/slice.jsonl MAX=5000
 make run
 ```
 
+The importer creates verification checks only for verification events with a non-null summary. It preserves the recorded result and summary; missing exit codes and check times stay absent. A result such as `passed` does not imply exit code 0.
+
+Ledger recording timestamps and `metadata.recording_mode` remain visible as source provenance. A manual coordinator projection is not automatic live telemetry. Recording a start event does not establish the execution start time; missing times display as **not recorded**. No approval envelope is inferred from ledger completion or owner conversation.
+
 Stop the server before importing: it holds the store in memory and would
 overwrite the result. Imported records get `provenance: LEDGER`, and any entry
 whose artifact path shows it came from a test run is marked
