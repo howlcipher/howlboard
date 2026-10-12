@@ -7,13 +7,13 @@ FRONTEND_PORT ?= 3000
 ## Compile both tiers plus the ledger import tool through HowlFrame.
 build:
 	mkdir -p build
-	$(HOWLFRAME_BIN) frontend/app.howl -o frontend
+	$(HOWLFRAME_BIN) build frontend/app.howl --target=js -o frontend
 	$(HOWLFRAME_BIN) -compile-bc backend/server.howl -o backend/server.hfbc
 	$(HOWLFRAME_BIN) -compile-bc tools/ledger_import/ledger_import.howl -o build/ledger_import.hfbc
 	@# The published showcase is compiled from .howl too, importing the same
 	@# rendering module as the interface. The JS backend names its output
 	@# app.js, so it is renamed to sit beside the site's own script.js.
-	$(HOWLFRAME_BIN) docs/demo.howl -o docs
+	$(HOWLFRAME_BIN) build docs/demo.howl --target=js -o docs
 	mv docs/app.js docs/demo.js
 
 ## Black-box contract tests against the real compiled bytecode server.

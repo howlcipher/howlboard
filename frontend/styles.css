@@ -550,6 +550,7 @@ textarea { min-height: 64px; resize: vertical; }
     border-left: 3px solid var(--text-faint);
     padding: 6px 0 6px 10px;
     margin-bottom: 8px;
+    overflow-wrap: anywhere;
 }
 .blocker-owner { border-left-color: var(--awaiting); }
 .blocker-blocked { border-left-color: var(--blocked); }
