@@ -435,6 +435,30 @@ func TestMissionAPIContract(t *testing.T) {
 		}
 	})
 
+	t.Run("dependency scalar types have actionable errors and null is empty", func(t *testing.T) {
+		for _, value := range []string{`""`, `17`, `true`, `false`} {
+			status, body := post(t, "/api/missions/create",
+				fmt.Sprintf(`{"title":"Scalar deps","project":"HowlBoard","depends_on":%s}`, value))
+			if status != http.StatusBadRequest || body["error"] != "INVALID_DEPENDS_ON" || body["reason"] != "not_a_list" || body["field"] != "depends_on" {
+				t.Errorf("dependency value %s = %d %v, want actionable 400", value, status, body)
+			}
+		}
+		status, body := post(t, "/api/missions/create",
+			`{"title":"Null deps","project":"HowlBoard","depends_on":null}`)
+		if status != http.StatusCreated {
+			t.Fatalf("null dependencies = %d %v, want 201", status, body)
+		}
+		deps, ok := body["depends_on"].([]any)
+		if !ok || len(deps) != 0 {
+			t.Fatalf("null dependencies = %v, want empty list", body["depends_on"])
+		}
+		status, _ = post(t, "/api/missions/delete",
+			fmt.Sprintf(`{"id":%q}`, body["id"].(string)))
+		if status != http.StatusOK {
+			t.Fatalf("null dependency fixture cleanup = %d", status)
+		}
+	})
+
 	// store_keys enumerates the store directly, so a delete must disappear from
 	// listings with no separate index record to keep in step.
 	t.Run("create and delete round-trip through store enumeration", func(t *testing.T) {
@@ -689,7 +713,7 @@ func TestDependsOnRender(t *testing.T) {
 	root := repoRoot(t)
 	outDir := t.TempDir()
 	bin := filepath.Join(root, "howlframe_bin")
-	cmd := exec.Command(bin, filepath.Join(root, "frontend", "render_harness.howl"), "-o", outDir)
+	cmd := exec.Command(bin, "build", filepath.Join(root, "frontend", "render_harness.howl"), "--target=js", "-o", outDir)
 	cmd.Dir = root
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("compile render harness: %v\n%s", err, output)
@@ -1510,7 +1534,7 @@ func TestFactoryViewEscapes(t *testing.T) {
 	root := repoRoot(t)
 	outDir := t.TempDir()
 	bin := filepath.Join(root, "howlframe_bin")
-	cmd := exec.Command(bin, filepath.Join(root, "frontend", "factory_harness.howl"), "-o", outDir)
+	cmd := exec.Command(bin, "build", filepath.Join(root, "frontend", "factory_harness.howl"), "--target=js", "-o", outDir)
 	cmd.Dir = root
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("compile factory harness: %v\n%s", err, output)

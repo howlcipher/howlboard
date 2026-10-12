@@ -1,5 +1,11 @@
 function howlFrameGrantHas(name) {
-  var raw = process.env.HOWLFRAME_ALLOW_CAPS || "";
+  var raw = "";
+  if (typeof process !== "undefined" && process.env) {
+    raw = process.env.HOWLFRAME_ALLOW_CAPS || "";
+  } else if (typeof globalThis !== "undefined") {
+    raw = globalThis.HOWLFRAME_ALLOW_CAPS;
+  }
+  if (typeof raw !== "string") return false;
   var parts = raw.split(",");
   for (var i = 0; i < parts.length; i++) {
     if (parts[i].trim() === name) return true;
@@ -1449,5 +1455,9 @@ let first = howlFrameListGet(missions, 0);
 
 })().catch((err) => {
   console.error(err && err.message ? err.message : err);
-  process.exit(1);
+  if (typeof process !== "undefined" && typeof process.exit === "function") {
+    process.exit(1);
+  } else {
+    throw err;
+  }
 });

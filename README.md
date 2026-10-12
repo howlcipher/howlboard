@@ -171,3 +171,24 @@ reuses their vocabulary rather than inventing a parallel one — see
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+## Browser compatibility and smoke check
+
+The frontend and published demo compile with `build --target=js`; bare-path
+compilation in current HowlFrame selects standalone bytecode. The hosting page
+grants only `network` through `globalThis.HOWLFRAME_ALLOW_CAPS` before loading
+the compiled frontend. This requires the HowlFrame browser host-grant fix;
+older binaries can compile but cannot complete browser network calls.
+
+For a read-only browser check, run an isolated API and frontend using the
+quickstart above. Optionally load demo missions with `make seed`. With Python
+Playwright and its Chromium runtime installed, run:
+
+```bash
+python3 scripts/test_browser.py --output /tmp/howlboard-browser-evidence
+```
+
+The check verifies real API loading, desktop/mobile overflow, keyboard focus,
+and browser errors, and saves screenshots. It creates no missions or approvals.
+It is a smoke check, not a complete accessibility audit. Backend contract
+tests remain the gate for state transitions and authority.
