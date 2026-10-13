@@ -41,12 +41,13 @@ around the distinction between a claim and a verified fact:
 
 ## Quickstart
 
-Requires Go (to build the HowlFrame compiler) and Python 3 (to serve the
+Requires Go 1.26 (to build the HowlFrame compiler) and Python 3 (to serve the
 static frontend).
 
 ```bash
 # 1. Build the HowlFrame compiler this repository compiles against.
 git clone https://github.com/howlcipher/howlframe /tmp/howlframe
+git -C /tmp/howlframe checkout --detach 7631ce5d4008534ef681f35c3436922507d3f441
 cd /tmp/howlframe && go build -o /path/to/howlboard/howlframe_bin howlframe.go
 
 # 2. Compile both tiers plus the ledger import tool.
@@ -64,6 +65,12 @@ make seed
 ```
 
 Open http://localhost:3000 and select a mission.
+
+The documented build and CI use the same tested HowlFrame source commit,
+`7631ce5d4008534ef681f35c3436922507d3f441`. A moving compiler default branch
+is not a compatibility guarantee. Newer compiler null semantics currently break
+the demo seed contract; use this pin until that separate compatibility work is
+verified. This is a source build, not a published release-version assertion.
 
 `make build` produces `backend/server.hfbc`, `frontend/app.js`, and
 `build/ledger_import.hfbc`. The server runs as

@@ -17,7 +17,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: '1.26.0'
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -26,7 +26,8 @@ jobs:
 
       - name: Build HowlFrame Binary
         run: |
-          git clone --depth 1 https://github.com/howlcipher/howlframe.git /tmp/howlframe
+          git clone https://github.com/howlcipher/howlframe.git /tmp/howlframe
+          git -C /tmp/howlframe checkout --detach 7631ce5d4008534ef681f35c3436922507d3f441
           cd /tmp/howlframe
           go build -o $GITHUB_WORKSPACE/howlframe_bin howlframe.go
           chmod +x $GITHUB_WORKSPACE/howlframe_bin
