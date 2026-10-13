@@ -21,6 +21,8 @@
 ; The bytecode target has no module system, so this is deliberately one file.
 
 (http_server 8080
+  (grants "database" "filesystem" "environment"
+          "network:fetch=raw.githubusercontent.com" "network:fetch=github.com")
 
   ; ---------------------------------------------------------------- helpers
 
@@ -112,14 +114,14 @@
     (let (status "ENVELOPE_ABSENT")
       (do
         (let (auth (map_get mission "authority"))
-          (if (= auth "")
+          (if (or (is_nil auth) (= auth ""))
             (do)
             (let (decision (to_string (map_get auth "decision")))
               (let (approval (map_get auth "approval"))
                 (do
                   (if (= decision "ALLOW") (set status "DELEGATED_AUTHORITY_ALLOW") (do))
                   (if (= decision "DENY") (set status "DENIED_BY_ENVELOPE") (do))
-                  (if (= approval "")
+                  (if (or (is_nil approval) (= approval ""))
                     (do)
                     (let (expires (to_int (map_get approval "expires_at")))
                       (if (< expires (time_now))
@@ -662,9 +664,13 @@
     (let (url (call plane_snapshot_url))
       (do
         (try_let (raw (fetch url "GET"))
-          (catch missing (res_json 200 (call attach_git_provenance
-            (call absent_status "SNAPSHOT_ABSENT" "ABSENT" local_path)
-            url "" "main" "plane_git")))
+          (catch missing
+            (if (str_contains (to_string missing) "CAPABILITY_DENIED")
+              (res_json 500 (dict ("error" "FACTORY_FETCH_DENIED")
+                                  ("reason" "NETWORK_CAPABILITY_DENIED")))
+              (res_json 200 (call attach_git_provenance
+                (call absent_status "SNAPSHOT_ABSENT" "ABSENT" local_path)
+                url "" "main" "plane_git"))))
           (let (text (bytes_to_string raw))
             (try_let (doc (parse_json Any text))
               (catch perr (res_json 200 (call attach_git_provenance
@@ -1064,7 +1070,7 @@
                         (if (= (call envelope_status m) "ENVELOPE_EXPIRED")
                           (set expired (+ expired 1)) (do))
                         (let (vs (map_get m "verification"))
-                          (if (= vs "")
+                          (if (or (is_nil vs) (= vs ""))
                             (do)
                             (for v vs
                               (if (= (map_get v "status") "failed")
@@ -1077,7 +1083,7 @@
                           (if (= ex "")
                             (do)
                             (let (seen (map_get agents ex))
-                              (if (= seen "")
+                              (if (or (is_nil seen) (= seen ""))
                                 (map_set agents ex 1)
                                 (map_set agents ex (+ seen 1))
                               )
@@ -1317,7 +1323,7 @@
                         (let (auth (map_get m "authority"))
                           (let (ttl (map_get body "ttl_seconds"))
                             (do
-                              (if (= ttl "") (set ttl 3600) (do))
+                              (if (or (is_nil ttl) (= ttl "")) (set ttl 3600) (do))
                               (map_set auth "approval" (dict
                                 ("approver" approver)
                                 ("issued_at" (time_now))
@@ -1494,13 +1500,13 @@
                     ; Fixtures declare approval lifetimes relative to load time
                     ; so the expiry demonstration stays truthful as the file ages.
                     (let (auth (map_get m "authority"))
-                      (if (= auth "")
+                      (if (or (is_nil auth) (= auth ""))
                         (do)
                         (let (approval (map_get auth "approval"))
-                          (if (= approval "")
+                          (if (or (is_nil approval) (= approval ""))
                             (do)
                             (let (rel (map_get approval "expires_in"))
-                              (if (= rel "")
+                              (if (or (is_nil rel) (= rel ""))
                                 (do)
                                 (do
                                   (map_set approval "expires_at" (+ (time_now) (to_int rel)))

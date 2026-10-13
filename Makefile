@@ -1,4 +1,5 @@
 HOWLFRAME_BIN ?= $(shell if [ -x ./howlframe_bin ]; then echo ./howlframe_bin; elif command -v howlframe >/dev/null 2>&1; then command -v howlframe; else echo ./howlframe_bin; fi)
+FETCH_CAPS ?= network:fetch=raw.githubusercontent.com,network:fetch=github.com
 PORT ?= 8080
 FRONTEND_PORT ?= 3000
 
@@ -22,7 +23,7 @@ test: build
 
 ## Run the mission API. Capabilities are explicit and minimal.
 run: build
-	$(HOWLFRAME_BIN) -run-bc -allow-caps network,database,filesystem,environment backend/server.hfbc
+	$(HOWLFRAME_BIN) -run-bc -allow-caps network,database,filesystem,environment,$(FETCH_CAPS) backend/server.hfbc
 
 ## Serve the compiled interface.
 run-frontend:

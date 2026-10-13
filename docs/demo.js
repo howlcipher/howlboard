@@ -13,15 +13,265 @@ function howlFrameGrantHas(name) {
   return false;
 }
 
-function howlFrameFetch(url, method, body) {
-  if (!howlFrameGrantHas("network")) {
-    throw new Error("CAPABILITY_DENIED: capability denied: network");
+var howlFrameSpecialPrefixes = [
+  [[0,0,0,0,0,0,0,0,0,0,255,255,0,0,0,0], 104], // 0.0.0.0/8
+  [[0,0,0,0,0,0,0,0,0,0,255,255,10,0,0,0], 104], // 10.0.0.0/8
+  [[0,0,0,0,0,0,0,0,0,0,255,255,100,64,0,0], 106], // 100.64.0.0/10
+  [[0,0,0,0,0,0,0,0,0,0,255,255,127,0,0,0], 104], // 127.0.0.0/8
+  [[0,0,0,0,0,0,0,0,0,0,255,255,169,254,0,0], 112], // 169.254.0.0/16
+  [[0,0,0,0,0,0,0,0,0,0,255,255,172,16,0,0], 108], // 172.16.0.0/12
+  [[0,0,0,0,0,0,0,0,0,0,255,255,192,0,0,0], 120], // 192.0.0.0/24
+  [[0,0,0,0,0,0,0,0,0,0,255,255,192,0,2,0], 120], // 192.0.2.0/24
+  [[0,0,0,0,0,0,0,0,0,0,255,255,192,88,99,0], 120], // 192.88.99.0/24
+  [[0,0,0,0,0,0,0,0,0,0,255,255,192,168,0,0], 112], // 192.168.0.0/16
+  [[0,0,0,0,0,0,0,0,0,0,255,255,198,18,0,0], 111], // 198.18.0.0/15
+  [[0,0,0,0,0,0,0,0,0,0,255,255,198,51,100,0], 120], // 198.51.100.0/24
+  [[0,0,0,0,0,0,0,0,0,0,255,255,203,0,113,0], 120], // 203.0.113.0/24
+  [[0,0,0,0,0,0,0,0,0,0,255,255,224,0,0,0], 100], // 224.0.0.0/4
+  [[0,0,0,0,0,0,0,0,0,0,255,255,240,0,0,0], 100], // 240.0.0.0/4
+  [[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], 128], // ::/128
+  [[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], 128], // ::1/128
+  [[0,100,255,155,0,0,0,0,0,0,0,0,0,0,0,0], 96], // 64:ff9b::/96
+  [[0,100,255,155,0,1,0,0,0,0,0,0,0,0,0,0], 48], // 64:ff9b:1::/48
+  [[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], 64], // 100::/64
+  [[32,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0], 32], // 2001::/32
+  [[32,1,13,184,0,0,0,0,0,0,0,0,0,0,0,0], 32], // 2001:db8::/32
+  [[63,255,0,0,0,0,0,0,0,0,0,0,0,0,0,0], 20], // 3fff::/20
+  [[95,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], 16], // 5f00::/16
+  [[252,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], 7], // fc00::/7
+  [[254,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0], 10], // fe80::/10
+  [[254,192,0,0,0,0,0,0,0,0,0,0,0,0,0,0], 10], // fec0::/10
+  [[255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], 8], // ff00::/8
+];
+
+var howlFrameRedirectSafeHeaders = ["accept", "accept-encoding", "accept-language", "content-type", "content-length", "content-encoding", "user-agent"];
+
+function howlFrameGrantList() {
+  var raw = "";
+  if (typeof process !== "undefined" && process.env) {
+    raw = process.env.HOWLFRAME_ALLOW_CAPS || "";
+  } else if (typeof globalThis !== "undefined") {
+    raw = globalThis.HOWLFRAME_ALLOW_CAPS;
   }
-  var init = { method: method };
+  if (typeof raw !== "string") return [];
+  return raw.split(",").map(function (p) { return p.trim(); });
+}
+
+// Mirrors capability.Grants.AuthorizeFetch: exact host (WHATWG-canonical,
+// so IP literals compare in canonical form) and port; an omitted grant port
+// means the scheme default. The coarse network grant never fetches.
+// howlFrameCanonHost mirrors capability's canonicalIP: an IPv4-mapped IPv6
+// literal ([::ffff:a.b.c.d]) is the same host as a.b.c.d (#177).
+function howlFrameCanonHost(hostname) {
+  var h = String(hostname).toLowerCase();
+  if (h.charAt(0) !== "[") return h;
+  var b = howlFrameAddrBytes(h);
+  if (b && b.slice(0, 12).join(",") === "0,0,0,0,0,0,0,0,0,0,255,255") return b.slice(12).join(".");
+  return h;
+}
+
+function howlFrameFetchOrigin(u) {
+  return u.protocol + "//" + howlFrameCanonHost(u.hostname) + ":" + (u.port || (u.protocol === "https:" ? "443" : "80"));
+}
+
+function howlFrameFetchAllowed(u) {
+  if (!u || (u.protocol !== "http:" && u.protocol !== "https:") || !u.hostname) return false;
+  if (u.hostname.charAt(u.hostname.length - 1) === ".") return false;
+  var def = u.protocol === "https:" ? "443" : "80";
+  var port = u.port || def;
+  var grants = howlFrameGrantList();
+  for (var i = 0; i < grants.length; i++) {
+    if (grants[i].indexOf("network:fetch=") !== 0) continue;
+    var spec = grants[i].slice("network:fetch=".length);
+    if (spec === "" || /[\/@?#*%\s\\]/.test(spec) || spec.charAt(spec.length - 1) === ":") continue;
+    var g;
+    try { g = new URL("http://" + spec); } catch (e) { continue; }
+    var writtenHost = spec.charAt(0) === "[" ? spec.slice(0, spec.indexOf("]") + 1) : spec.split(":")[0].toLowerCase();
+    if (writtenHost.charAt(0) !== "[" && /(^|\.)[0-9][^.]*$/.test(writtenHost) && writtenHost !== g.hostname) continue;
+    if (howlFrameCanonHost(g.hostname) !== howlFrameCanonHost(u.hostname)) continue;
+    var gport = /:\d+$/.test(spec) ? spec.slice(spec.lastIndexOf(":") + 1) : def;
+    if (String(Number(gport)) === gport && gport === port) return true;
+  }
+  return false;
+}
+
+function howlFrameFetchURL(raw, base) {
+  var written = String(raw);
+  if (written.indexOf("\\") >= 0 || /^https?:/i.test(written) && !/^https?:\/\/[^/]/i.test(written)) howlFrameFetchDeny();
+  var u = new URL(written, base);
+  // WHATWG rewrites short, octal and hexadecimal IPv4 before grant matching.
+  var authority = /^(?:[a-z][a-z0-9+.-]*:)?\/\/([^/?#]*)/i.exec(written);
+  if (authority) {
+    var host = authority[1].slice(authority[1].lastIndexOf("@") + 1).split(":")[0].toLowerCase();
+    if (host.charAt(0) !== "[" && /(^|\.)[0-9][^.]*$/.test(host) && host !== u.hostname) howlFrameFetchDeny();
+  }
+  return u;
+}
+
+function howlFrameFetchDeny() {
+  throw new Error("CAPABILITY_DENIED: capability denied: network");
+}
+
+// Node checks private and metadata DNS results and pins the connection. A
+// browser cannot inspect DNS, so its own network policy governs named hosts.
+function howlFrameAddrBytes(a) {
+  a = String(a).toLowerCase().replace(/^\[|\]$/g, "");
+  var v4 = /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/.exec(a);
+  if (v4) {
+    var out4 = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255];
+    for (var k = 1; k <= 4; k++) { var n4 = Number(v4[k]); if (n4 > 255) return null; out4.push(n4); }
+    return out4;
+  }
+  if (a.indexOf(":") < 0 || a.indexOf("%") >= 0) return null;
+  var tail = /^(.*:)(\d+\.\d+\.\d+\.\d+)$/.exec(a);
+  if (tail) {
+    var t = howlFrameAddrBytes(tail[2]);
+    if (!t) return null;
+    a = tail[1] + ((t[12] << 8) | t[13]).toString(16) + ":" + ((t[14] << 8) | t[15]).toString(16);
+  }
+  var halves = a.split("::");
+  if (halves.length > 2) return null;
+  var head = halves[0] ? halves[0].split(":") : [];
+  var rest = halves.length === 2 && halves[1] ? halves[1].split(":") : [];
+  var fill = 8 - head.length - rest.length;
+  if (halves.length === 1 ? fill !== 0 : fill < 1) return null;
+  var groups = head.concat(new Array(halves.length === 2 ? fill : 0).fill("0"), rest);
+  var out = [];
+  for (var g = 0; g < groups.length; g++) {
+    if (!/^[0-9a-f]{1,4}$/.test(groups[g])) return null;
+    var n = parseInt(groups[g], 16);
+    out.push(n >> 8, n & 255);
+  }
+  return out;
+}
+
+// howlFrameIsSpecial mirrors capability.ForbiddenDestination over the shared table.
+function howlFrameIsSpecial(b) {
+  var mapped = function (x) { return [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255].concat(x); };
+  if (b[0] === 0x20 && b[1] === 0x02 && howlFrameIsSpecial(mapped(b.slice(2, 6)))) return true;
+  var compat = b.slice(0, 12).every(function (x) { return x === 0; });
+  if (compat && !(b[12] === 0 && b[13] === 0 && b[14] === 0)) return howlFrameIsSpecial(mapped(b.slice(12, 16)));
+  var translated = b.slice(0, 8).every(function (x) { return x === 0; }) && b[8] === 255 && b[9] === 255 && b[10] === 0 && b[11] === 0;
+  if (translated) return howlFrameIsSpecial(mapped(b.slice(12, 16)));
+  for (var i = 0; i < howlFrameSpecialPrefixes.length; i++) {
+    var p = howlFrameSpecialPrefixes[i][0], bits = howlFrameSpecialPrefixes[i][1], ok = true;
+    for (var k = 0; k < 16 && ok && bits > 0; k++, bits -= 8) {
+      var mask = bits >= 8 ? 255 : (0xff << (8 - bits)) & 255;
+      ok = (b[k] & mask) === (p[k] & mask);
+    }
+    if (ok) return true;
+  }
+  return false;
+}
+
+function howlFrameIsLoopback(b) {
+  if (!b) return false;
+  var v4 = b.slice(0, 12).join(",") === "0,0,0,0,0,0,0,0,0,0,255,255";
+  return v4 && b[12] === 127 || b.slice(0, 15).every(function (x) { return x === 0; }) && b[15] === 1;
+}
+
+function howlFrameForbiddenAddress(address, explicit) {
+  var b = howlFrameAddrBytes(address);
+  if (!b) return true;
+  var v4 = b.slice(0, 12).join(",") === "0,0,0,0,0,0,0,0,0,0,255,255";
+  if (v4 && b[12] >= 224 && b[12] <= 239 || b[0] === 0xff) return true;
+  if (explicit) return false;
+  return howlFrameIsSpecial(b);
+}
+
+async function howlFrameFetchResolvedOk(u) {
+  var host = u.hostname.replace(/^\[|\]$/g, "");
+  var literal = /^\[.*\]$/.test(u.hostname) || /^\d+\.\d+\.\d+\.\d+$/.test(host);
+  if (literal) return !howlFrameForbiddenAddress(host, true);
+  if (typeof require !== "function") return true;
+  var addrs = await require("dns").promises.lookup(host, { all: true });
+  if (!addrs.length) return false;
+  var localhost = host === "localhost";
+  for (var i = 0; i < addrs.length; i++) {
+    if (howlFrameForbiddenAddress(addrs[i].address, localhost)) return false;
+    // The localhost opt-out reaches loopback only (127/8, ::1).
+    if (localhost && !howlFrameIsLoopback(howlFrameAddrBytes(addrs[i].address))) return false;
+  }
+  // Pin this request to the full vetted set; never resolve again at connect time.
+  u.howlFrameAddresses = addrs.map(function (a) { return { address: a.address, family: a.family }; });
+  return true;
+}
+
+function howlFrameFetchRequest(u, init) {
+  if (typeof require !== "function") return fetch(u.href, init);
+  // Native requests ignore proxy environment variables, including Node 24's
+  // NODE_USE_ENV_PROXY. agent:false also prevents pooled connections bypassing lookup.
+  return new Promise(function (resolve, reject) {
+    var options = { method: init.method, headers: init.headers, agent: false };
+    if (u.howlFrameAddresses) options.lookup = function (host, opts, cb) {
+      if (typeof opts === "function") { cb = opts; opts = {}; }
+      var all = u.howlFrameAddresses.filter(function (a) {
+        return !opts || !opts.family || opts.family === a.family || opts.family === "IPv" + a.family;
+      });
+      if (!all.length) return cb(new Error("CAPABILITY_DENIED: capability denied: network"));
+      if (opts && opts.all) return cb(null, all.map(function (a) { return { address: a.address, family: a.family }; }));
+      cb(null, all[0].address, all[0].family);
+    };
+    var req = require(u.protocol === "https:" ? "https" : "http").request(u, options, function (res) {
+      var chunks = [];
+      res.on("data", function (chunk) { chunks.push(chunk); });
+      res.on("error", reject);
+      res.on("end", function () { resolve({
+        status: res.statusCode,
+        headers: { get: function (name) { return res.headers[name.toLowerCase()]; } },
+        text: async function () {
+          var data = Buffer.concat(chunks);
+          var encoding = String(res.headers["content-encoding"] || "").toLowerCase();
+          if (encoding === "gzip") data = require("zlib").gunzipSync(data);
+          else if (encoding === "deflate") data = require("zlib").inflateSync(data);
+          else if (encoding === "br") data = require("zlib").brotliDecompressSync(data);
+          return data.toString("utf8").replace(/^\uFEFF/, "");
+        }
+      }); });
+    });
+    req.on("error", reject);
+    if (init.body !== undefined) req.write(init.body);
+    req.end();
+  });
+}
+
+async function howlFrameFetch(url, method, body, headers) {
+  var u;
+  // Browser-relative URLs resolve against the host page, then face the same
+  // exact destination grant checks as absolute URLs. Node has no implicit base.
+  var base = typeof process === "undefined" && typeof location !== "undefined" ? location.href : undefined;
+  try { u = howlFrameFetchURL(url, base); } catch (e) { howlFrameFetchDeny(); }
+  if (base && (u.username !== "" || u.password !== "")) howlFrameFetchDeny();
+  if (!howlFrameFetchAllowed(u)) howlFrameFetchDeny();
+  var init = { method: method, redirect: "manual", headers: Object.assign({}, headers || {}) };
   if (arguments.length >= 3) {
     init.body = body;
   }
-  return fetch(url, init).then(function (r) { return r.text(); });
+  var first = u;
+  for (var hop = 0; ; hop++) {
+    if (!(await howlFrameFetchResolvedOk(u))) howlFrameFetchDeny();
+    var pending = howlFrameFetchRequest(u, init);
+    var r = await pending;
+    if (r && r.type === "opaqueredirect") howlFrameFetchDeny();
+    var loc = r && r.status >= 300 && r.status < 400 && r.headers && r.headers.get ? r.headers.get("location") : null;
+    if (!loc) return r.text();
+    if (hop >= 10) howlFrameFetchDeny();
+    var previous = u;
+    try { u = howlFrameFetchURL(loc, u); } catch (e) { howlFrameFetchDeny(); }
+    if (previous.protocol === "https:" && u.protocol === "http:") howlFrameFetchDeny();
+    var optHost = u.hostname.replace(/^\[|\]$/g, "");
+    if ((/^\[.*\]$/.test(u.hostname) || /^\d+\.\d+\.\d+\.\d+$/.test(optHost) || optHost === "localhost") && howlFrameCanonHost(u.hostname) !== howlFrameCanonHost(first.hostname)) howlFrameFetchDeny();
+    if (u.username !== "" || u.password !== "") howlFrameFetchDeny();
+    if (howlFrameFetchOrigin(previous) !== howlFrameFetchOrigin(u)) {
+      Object.keys(init.headers || {}).forEach(function (name) {
+        if (howlFrameRedirectSafeHeaders.indexOf(String(name).toLowerCase()) < 0) delete init.headers[name];
+      });
+    }
+    if (!howlFrameFetchAllowed(u)) howlFrameFetchDeny();
+    if (r.status === 303 || (r.status === 301 || r.status === 302) && init.method === "POST") {
+      init = { method: "GET", redirect: "manual" };
+    }
+  }
 }
 
 function howlFrameToInt(v) {
@@ -120,7 +370,7 @@ function howlFrameMapGet(dict, key) {
   if (!howlFrameIsDict(dict)) {
     throw new Error("TYPE_ERROR: map_get expected dict, got " + howlFrameValueKind(dict));
   }
-  return dict[key] ?? "";
+  return Object.prototype.hasOwnProperty.call(dict, key) ? dict[key] : null;
 }
 function howlFrameMapSet(dict, key, val) {
   if (!howlFrameIsDict(dict)) {
@@ -138,8 +388,10 @@ function howlFrameAppend(list, item) {
   if (!Array.isArray(list)) {
     throw new Error("TYPE_ERROR: append expected list, got " + howlFrameValueKind(list));
   }
-  list.push(item);
-  return list;
+  // Lists are values: append returns a copy, matching the VM.
+  var out = list.slice();
+  out.push(item);
+  return out;
 }
 function howlFrameListIndex(idx) {
   if (typeof idx === "number" && Number.isInteger(idx)) return idx;
@@ -170,14 +422,14 @@ let status = "ENVELOPE_ABSENT";
 {
 let auth = howlFrameMapGet(mission, "authority");
 //line mission_view.howl:24
-if ((String(auth) === "")) {
+if ((((_v) => _v == null ? "" : String(_v))(auth) === "")) {
 //line mission_view.howl:25
 {
 }
 } else {
 //line mission_view.howl:26
 {
-let decision = String(howlFrameMapGet(auth, "decision"));
+let decision = ((_v) => _v == null ? "" : String(_v))(howlFrameMapGet(auth, "decision"));
 let approval = howlFrameMapGet(auth, "approval");
 //line mission_view.howl:28
 {
@@ -200,7 +452,7 @@ status = "DENIED_BY_ENVELOPE"
 }
 };
 //line mission_view.howl:31
-if ((String(approval) === "")) {
+if ((((_v) => _v == null ? "" : String(_v))(approval) === "")) {
 //line mission_view.howl:32
 {
 }
@@ -212,12 +464,12 @@ let expires = 0;
 {
 //line mission_view.howl:35
 {
-let absolute = String(howlFrameMapGet(approval, "expires_at"));
+let absolute = ((_v) => _v == null ? "" : String(_v))(howlFrameMapGet(approval, "expires_at"));
 //line mission_view.howl:36
 if ((absolute === "")) {
 //line mission_view.howl:37
 {
-let relative = String(howlFrameMapGet(approval, "expires_in"));
+let relative = ((_v) => _v == null ? "" : String(_v))(howlFrameMapGet(approval, "expires_in"));
 //line mission_view.howl:38
 if ((relative === "")) {
 //line mission_view.howl:39
@@ -263,7 +515,7 @@ return status;;
 async function view_esc(s) {
 //line mission_view.howl:69
 {
-let out = String(s);
+let out = ((_v) => _v == null ? "" : String(_v))(s);
 //line mission_view.howl:70
 {
 //line mission_view.howl:71
@@ -285,7 +537,7 @@ return out;;
 async function view_ago(ts) {
 //line mission_view.howl:85
 {
-let raw = String(ts);
+let raw = ((_v) => _v == null ? "" : String(_v))(ts);
 //line mission_view.howl:86
 if (((raw === "") || ((raw === "0") || (raw === "<nil>")))) {
 //line mission_view.howl:87
@@ -314,15 +566,15 @@ out = "just now"
 //line mission_view.howl:94
 if ((delta < 3600)) {
 //line mission_view.howl:95
-out = ([String(howlFrameToInt(howlFrameDiv(delta, 60))), "m ago"]).join("")
+out = ([((_v) => _v == null ? "" : String(_v))(howlFrameToInt(howlFrameDiv(delta, 60))), "m ago"]).join("")
 } else {
 //line mission_view.howl:96
 if ((delta < 86400)) {
 //line mission_view.howl:97
-out = ([String(howlFrameToInt(howlFrameDiv(delta, 3600))), "h ago"]).join("")
+out = ([((_v) => _v == null ? "" : String(_v))(howlFrameToInt(howlFrameDiv(delta, 3600))), "h ago"]).join("")
 } else {
 //line mission_view.howl:98
-out = ([String(howlFrameToInt(howlFrameDiv(delta, 86400))), "d ago"]).join("")
+out = ([((_v) => _v == null ? "" : String(_v))(howlFrameToInt(howlFrameDiv(delta, 86400))), "d ago"]).join("")
 }
 }
 };
@@ -337,7 +589,7 @@ return out;;
 async function view_recorded_time(ts, ledger_stamp) {
 //line mission_view.howl:116
 {
-let stamp = String(ledger_stamp);
+let stamp = ((_v) => _v == null ? "" : String(_v))(ledger_stamp);
 //line mission_view.howl:117
 if ((stamp === "")) {
 //line mission_view.howl:117
@@ -380,7 +632,7 @@ cls = "badge ledger"
 }
 };
 //line mission_view.howl:135
-if ((String(p) === "")) {
+if ((((_v) => _v == null ? "" : String(_v))(p) === "")) {
 //line mission_view.howl:136
 out = ""
 } else {
@@ -396,8 +648,8 @@ return out;;
 async function view_render_row(m) {
 //line mission_view.howl:149
 {
-let id = String(howlFrameMapGet(m, "id"));
-let st = String(howlFrameMapGet(m, "state"));
+let id = ((_v) => _v == null ? "" : String(_v))(howlFrameMapGet(m, "id"));
+let st = ((_v) => _v == null ? "" : String(_v))(howlFrameMapGet(m, "state"));
 let html = "";
 //line mission_view.howl:152
 {
@@ -415,7 +667,7 @@ html = ([html, "<span class=\"tag\">", (await view_esc(howlFrameMapGet(m, "proje
 html = ([html, "<span class=\"tag\">", (await view_esc(howlFrameMapGet(m, "priority"))), "</span>"]).join("");
 //line mission_view.howl:167
 {
-let ex = String(howlFrameMapGet(m, "executor"));
+let ex = ((_v) => _v == null ? "" : String(_v))(howlFrameMapGet(m, "executor"));
 //line mission_view.howl:168
 if ((ex === "")) {
 //line mission_view.howl:169
@@ -454,7 +706,7 @@ html = ([html, "<dt>Identifier</dt><dd>", (await view_esc(howlFrameMapGet(m, "id
 //line mission_view.howl:197
 html = ([html, "<dt>Workstream</dt><dd>", (await view_esc(howlFrameMapGet(m, "project"))), "</dd>"]).join("");
 //line mission_view.howl:198
-html = ([html, "<dt>State</dt><dd>", (await view_state_pill(String(howlFrameMapGet(m, "state")))), "</dd>"]).join("");
+html = ([html, "<dt>State</dt><dd>", (await view_state_pill(((_v) => _v == null ? "" : String(_v))(howlFrameMapGet(m, "state")))), "</dd>"]).join("");
 //line mission_view.howl:199
 html = ([html, "<dt>Priority</dt><dd>", (await view_esc(howlFrameMapGet(m, "priority"))), "</dd>"]).join("");
 //line mission_view.howl:200
@@ -467,7 +719,7 @@ html = ([html, "<dt>Updated</dt><dd>", (await view_ago(howlFrameMapGet(m, "updat
 html = ([html, "<dt>Provenance</dt><dd>", (await view_provenance_badge(howlFrameMapGet(m, "provenance"))), "</dd>"]).join("");
 //line mission_view.howl:204
 {
-let recorded = String(howlFrameMapGet(m, "ledger_recorded_at"));
+let recorded = ((_v) => _v == null ? "" : String(_v))(howlFrameMapGet(m, "ledger_recorded_at"));
 //line mission_view.howl:205
 if ((recorded === "")) {
 //line mission_view.howl:205
@@ -480,7 +732,7 @@ html = ([html, "<dt>Ledger recorded</dt><dd>", (await view_esc(recorded)), "</dd
 };
 //line mission_view.howl:209
 {
-let mode = String(howlFrameMapGet(m, "recording_mode"));
+let mode = ((_v) => _v == null ? "" : String(_v))(howlFrameMapGet(m, "recording_mode"));
 //line mission_view.howl:210
 if ((mode === "")) {
 //line mission_view.howl:210
@@ -497,7 +749,7 @@ html = ([html, "</dl>"]).join("");
 {
 let deps = howlFrameMapGet(m, "depends_on");
 //line mission_view.howl:219
-if ((String(deps) === "")) {
+if ((((_v) => _v == null ? "" : String(_v))(deps) === "")) {
 //line mission_view.howl:220
 {
 }
@@ -542,7 +794,7 @@ let html = "<div class=\"stage\"><h3 data-step=\"02\">Evidence</h3>";
 //line mission_view.howl:255
 {
 //line mission_view.howl:256
-if ((String(items) === "")) {
+if ((((_v) => _v == null ? "" : String(_v))(items) === "")) {
 //line mission_view.howl:257
 html = ([html, "<p class=\"item-sub\">No evidence recorded.</p>"]).join("")
 } else {
@@ -585,7 +837,7 @@ let html = "<div class=\"stage\"><h3 data-step=\"03\">Decision</h3>";
 //line mission_view.howl:290
 {
 //line mission_view.howl:291
-if ((String(r) === "")) {
+if ((((_v) => _v == null ? "" : String(_v))(r) === "")) {
 //line mission_view.howl:292
 html = ([html, "<p class=\"item-sub\">No decision record.</p>"]).join("")
 } else {
@@ -599,7 +851,7 @@ html = ([html, "<dt>Problem</dt><dd>", (await view_esc(howlFrameMapGet(r, "probl
 {
 let obs = howlFrameMapGet(r, "observations");
 //line mission_view.howl:297
-if ((String(obs) === "")) {
+if ((((_v) => _v == null ? "" : String(_v))(obs) === "")) {
 //line mission_view.howl:298
 {
 }
@@ -624,7 +876,7 @@ html = ([html, "<dt>Observations</dt><dd>", acc, "</dd>"]).join("");
 {
 let asm = howlFrameMapGet(r, "assumptions");
 //line mission_view.howl:308
-if ((String(asm) === "")) {
+if ((((_v) => _v == null ? "" : String(_v))(asm) === "")) {
 //line mission_view.howl:309
 {
 }
@@ -649,7 +901,7 @@ html = ([html, "<dt>Assumptions</dt><dd>", acc, "</dd>"]).join("");
 {
 let opts = howlFrameMapGet(r, "options");
 //line mission_view.howl:319
-if ((String(opts) === "")) {
+if ((((_v) => _v == null ? "" : String(_v))(opts) === "")) {
 //line mission_view.howl:320
 {
 }
@@ -692,14 +944,14 @@ async function view_stage_authority(m) {
 //line mission_view.howl:350
 {
 let a = howlFrameMapGet(m, "authority");
-let env = String(howlFrameMapGet(m, "envelope_status"));
+let env = ((_v) => _v == null ? "" : String(_v))(howlFrameMapGet(m, "envelope_status"));
 let html = "<div class=\"stage\"><h3 data-step=\"04\">Authority</h3>";
 //line mission_view.howl:353
 {
 //line mission_view.howl:354
 html = ([html, "<p class=\"authority-banner env-", (await view_esc(env)), "\">", (await view_esc(env)), "</p>"]).join("");
 //line mission_view.howl:356
-if ((String(a) === "")) {
+if ((((_v) => _v == null ? "" : String(_v))(a) === "")) {
 //line mission_view.howl:357
 html = ([html, "<p class=\"item-sub\">No authority record.</p>"]).join("")
 } else {
@@ -717,7 +969,7 @@ html = ([html, "<dt>Digest</dt><dd>", (await view_esc(howlFrameMapGet(a, "digest
 {
 let gates = howlFrameMapGet(a, "gates");
 //line mission_view.howl:364
-if ((String(gates) === "")) {
+if ((((_v) => _v == null ? "" : String(_v))(gates) === "")) {
 //line mission_view.howl:365
 {
 }
@@ -742,7 +994,7 @@ html = ([html, "<dt>Gates</dt><dd>", acc, "</dd>"]).join("");
 {
 let ap = howlFrameMapGet(a, "approval");
 //line mission_view.howl:380
-if ((String(ap) === "")) {
+if ((((_v) => _v == null ? "" : String(_v))(ap) === "")) {
 //line mission_view.howl:381
 html = ([html, "<dt>Approval</dt><dd class=\"item-sub\">No approval on record.</dd>"]).join("")
 } else {
@@ -759,7 +1011,7 @@ html = ([html, "<dt>Expiry</dt><dd class=\"status status-EXPIRED\">Lapsed ", (aw
 } else {
 //line mission_view.howl:392
 {
-let raw_exp = String(howlFrameMapGet(ap, "expires_at"));
+let raw_exp = ((_v) => _v == null ? "" : String(_v))(howlFrameMapGet(ap, "expires_at"));
 let exp_ts = 0;
 //line mission_view.howl:394
 {
@@ -773,7 +1025,7 @@ exp_ts = howlFrameToInt(raw_exp)
 }
 };
 //line mission_view.howl:399
-html = ([html, "<dt>Expiry</dt><dd>Valid, expires in ", String(howlFrameToInt(howlFrameDiv(howlFrameSafeInt(exp_ts - Math.floor(Date.now() / 1000)), 60))), " min</dd>"]).join("");
+html = ([html, "<dt>Expiry</dt><dd>Valid, expires in ", ((_v) => _v == null ? "" : String(_v))(howlFrameToInt(howlFrameDiv(howlFrameSafeInt(exp_ts - Math.floor(Date.now() / 1000)), 60))), " min</dd>"]).join("");
 }
 }
 };
@@ -798,7 +1050,7 @@ let html = "<div class=\"stage\"><h3 data-step=\"05\">Plan</h3>";
 //line mission_view.howl:426
 {
 //line mission_view.howl:427
-if ((String(steps) === "")) {
+if ((((_v) => _v == null ? "" : String(_v))(steps) === "")) {
 //line mission_view.howl:428
 html = ([html, "<p class=\"item-sub\">No plan recorded.</p>"]).join("")
 } else {
@@ -806,7 +1058,7 @@ html = ([html, "<p class=\"item-sub\">No plan recorded.</p>"]).join("")
 for (let s of steps) {
 //line mission_view.howl:430
 {
-let st = String(howlFrameMapGet(s, "state"));
+let st = ((_v) => _v == null ? "" : String(_v))(howlFrameMapGet(s, "state"));
 let marker = "[ ]";
 //line mission_view.howl:432
 {
@@ -866,7 +1118,7 @@ let html = "<div class=\"stage\"><h3 data-step=\"06\">Executor</h3><dl class=\"k
 {
 //line mission_view.howl:460
 {
-let ex = String(howlFrameMapGet(m, "executor"));
+let ex = ((_v) => _v == null ? "" : String(_v))(howlFrameMapGet(m, "executor"));
 //line mission_view.howl:461
 if ((ex === "")) {
 //line mission_view.howl:462
@@ -882,7 +1134,7 @@ html = ([html, "<dt>Recommended</dt><dd>", (await view_esc(howlFrameMapGet(m, "r
 {
 let ov = howlFrameMapGet(m, "is_override");
 //line mission_view.howl:469
-if ((String(ov) === "true")) {
+if ((((_v) => _v == null ? "" : String(_v))(ov) === "true")) {
 //line mission_view.howl:470
 html = ([html, "<dt>Override</dt><dd class=\"status status-PENDING\">Yes &mdash; ", (await view_esc(howlFrameMapGet(m, "override_reason"))), "</dd>"]).join("")
 } else {
@@ -904,7 +1156,7 @@ let html = "<div class=\"stage\"><h3 data-step=\"07\">Execution</h3>";
 //line mission_view.howl:487
 {
 //line mission_view.howl:488
-if ((String(x) === "")) {
+if ((((_v) => _v == null ? "" : String(_v))(x) === "")) {
 //line mission_view.howl:489
 html = ([html, "<p class=\"item-sub\">Execution details not recorded.</p>"]).join("")
 } else {
@@ -914,7 +1166,7 @@ html = ([html, "<p class=\"item-sub\">Execution details not recorded.</p>"]).joi
 html = ([html, "<dl class=\"kv\">"]).join("");
 //line mission_view.howl:492
 {
-let raw_start = String(howlFrameMapGet(x, "started_at"));
+let raw_start = ((_v) => _v == null ? "" : String(_v))(howlFrameMapGet(x, "started_at"));
 let started = 0;
 //line mission_view.howl:494
 {
@@ -945,7 +1197,7 @@ html = ([html, "<dt>Started</dt><dd>", (await view_ago(started)), "</dd>"]).join
 };
 //line mission_view.howl:509
 {
-let op = String(howlFrameMapGet(x, "current_operation"));
+let op = ((_v) => _v == null ? "" : String(_v))(howlFrameMapGet(x, "current_operation"));
 //line mission_view.howl:510
 if ((op === "")) {
 //line mission_view.howl:511
@@ -957,12 +1209,12 @@ html = ([html, "<dt>Current</dt><dd>", (await view_esc(op)), "</dd>"]).join("")
 }
 };
 //line mission_view.howl:515
-html = ([html, "<dt>Retries</dt><dd>", String(howlFrameMapGet(x, "retries")), "</dd>"]).join("");
+html = ([html, "<dt>Retries</dt><dd>", ((_v) => _v == null ? "" : String(_v))(howlFrameMapGet(x, "retries")), "</dd>"]).join("");
 //line mission_view.howl:516
 {
 let rec = howlFrameMapGet(x, "delta");
 //line mission_view.howl:517
-if ((String(rec) === "")) {
+if ((((_v) => _v == null ? "" : String(_v))(rec) === "")) {
 //line mission_view.howl:518
 {
 }
@@ -976,7 +1228,7 @@ let acc = "";
 //line mission_view.howl:522
 {
 //line mission_view.howl:523
-if ((String(mods) === "")) {
+if ((((_v) => _v == null ? "" : String(_v))(mods) === "")) {
 //line mission_view.howl:524
 {
 }
@@ -1001,7 +1253,7 @@ html = ([html, "<dt>Files changed</dt><dd>", acc, "</dd>"]).join("");
 }
 };
 //line mission_view.howl:532
-html = ([html, "<dt>Diff</dt><dd>+", String(howlFrameMapGet(rec, "insertions")), " / -", String(howlFrameMapGet(rec, "deletions")), "</dd>"]).join("");
+html = ([html, "<dt>Diff</dt><dd>+", ((_v) => _v == null ? "" : String(_v))(howlFrameMapGet(rec, "insertions")), " / -", ((_v) => _v == null ? "" : String(_v))(howlFrameMapGet(rec, "deletions")), "</dd>"]).join("");
 //line mission_view.howl:535
 {
 let unexpected = howlFrameMapGet(rec, "unexpected");
@@ -1009,7 +1261,7 @@ let n = 0;
 //line mission_view.howl:537
 {
 //line mission_view.howl:538
-if ((String(unexpected) === "")) {
+if ((((_v) => _v == null ? "" : String(_v))(unexpected) === "")) {
 //line mission_view.howl:538
 {
 }
@@ -1046,7 +1298,7 @@ html = ([html, "<dt>Unexpected changes</dt><dd class=\"status status-failed\">",
 {
 let receipt = howlFrameMapGet(x, "receipt");
 //line mission_view.howl:557
-if ((String(receipt) === "")) {
+if ((((_v) => _v == null ? "" : String(_v))(receipt) === "")) {
 //line mission_view.howl:558
 {
 }
@@ -1055,7 +1307,7 @@ if ((String(receipt) === "")) {
 {
 //line mission_view.howl:560
 {
-let err = String(howlFrameMapGet(receipt, "error_message"));
+let err = ((_v) => _v == null ? "" : String(_v))(howlFrameMapGet(receipt, "error_message"));
 //line mission_view.howl:561
 if ((err === "")) {
 //line mission_view.howl:562
@@ -1068,7 +1320,7 @@ html = ([html, "<dt>Error</dt><dd class=\"status status-failed\">", (await view_
 };
 //line mission_view.howl:567
 {
-let rb = String(howlFrameMapGet(receipt, "rollback_status"));
+let rb = ((_v) => _v == null ? "" : String(_v))(howlFrameMapGet(receipt, "rollback_status"));
 //line mission_view.howl:568
 if ((rb === "")) {
 //line mission_view.howl:569
@@ -1086,7 +1338,7 @@ html = ([html, "<dt>Rollback</dt><dd>", (await view_esc(rb)), "</dd>"]).join("")
 {
 let recovery = howlFrameMapGet(x, "recovery_actions");
 //line mission_view.howl:577
-if ((String(recovery) === "")) {
+if ((((_v) => _v == null ? "" : String(_v))(recovery) === "")) {
 //line mission_view.howl:578
 {
 }
@@ -1132,7 +1384,7 @@ let html = "<div class=\"stage\"><h3 data-step=\"08\">Verification</h3>";
 //line mission_view.howl:605
 {
 //line mission_view.howl:606
-if ((String(vs) === "")) {
+if ((((_v) => _v == null ? "" : String(_v))(vs) === "")) {
 //line mission_view.howl:607
 html = ([html, "<p class=\"item-sub\">No verification details recorded.</p>"]).join("")
 } else {
@@ -1145,7 +1397,7 @@ html = ([html, "<p class=\"item-sub\">No verification details recorded.</p>"]).j
 for (let v of vs) {
 //line mission_view.howl:611
 {
-let st = String(howlFrameMapGet(v, "status"));
+let st = ((_v) => _v == null ? "" : String(_v))(howlFrameMapGet(v, "status"));
 let block = "";
 //line mission_view.howl:613
 {
@@ -1162,7 +1414,7 @@ block = ([block, "<span class=\"claim-warning\">Claimed by the agent; not indepe
 };
 //line mission_view.howl:621
 {
-let digest = String(howlFrameMapGet(v, "output_digest"));
+let digest = ((_v) => _v == null ? "" : String(_v))(howlFrameMapGet(v, "output_digest"));
 //line mission_view.howl:622
 if ((digest === "")) {
 //line mission_view.howl:623
@@ -1177,7 +1429,7 @@ block = ([block, "<span class=\"item-sub\">", (await view_esc(digest)), "</span>
 {
 let summary = howlFrameMapGet(v, "summary");
 //line mission_view.howl:629
-if ((String(summary) === "")) {
+if ((((_v) => _v == null ? "" : String(_v))(summary) === "")) {
 //line mission_view.howl:629
 {
 }
@@ -1188,7 +1440,7 @@ block = ([block, "<span class=\"item-sub\">", (await view_esc(JSON.stringify(sum
 };
 //line mission_view.howl:633
 {
-let exit_text = String(howlFrameMapGet(v, "exit_code"));
+let exit_text = ((_v) => _v == null ? "" : String(_v))(howlFrameMapGet(v, "exit_code"));
 //line mission_view.howl:634
 {
 //line mission_view.howl:635
@@ -1220,7 +1472,7 @@ return ([html, "</div>"]).join("");;
 async function view_stage_outcome(m) {
 //line mission_view.howl:658
 {
-let o = String(howlFrameMapGet(m, "outcome"));
+let o = ((_v) => _v == null ? "" : String(_v))(howlFrameMapGet(m, "outcome"));
 let html = "<div class=\"stage\"><h3 data-step=\"09\">Outcome</h3>";
 //line mission_view.howl:660
 {
@@ -1246,7 +1498,7 @@ let html = "<div class=\"stage\"><h3 data-step=\"10\">Audit timeline</h3><div cl
 //line mission_view.howl:679
 {
 //line mission_view.howl:680
-if ((String(events) === "")) {
+if ((((_v) => _v == null ? "" : String(_v))(events) === "")) {
 //line mission_view.howl:681
 html = ([html, "<p class=\"item-sub\">No recorded history.</p>"]).join("")
 } else {
@@ -1254,7 +1506,7 @@ html = ([html, "<p class=\"item-sub\">No recorded history.</p>"]).join("")
 for (let e of events) {
 //line mission_view.howl:683
 {
-let action = String(howlFrameMapGet(e, "action"));
+let action = ((_v) => _v == null ? "" : String(_v))(howlFrameMapGet(e, "action"));
 let cls = "timeline-row";
 //line mission_view.howl:685
 {
@@ -1316,7 +1568,7 @@ cls = "timeline-row t-done"
 html = ([html, "<div class=\"", cls, "\"><span class=\"at\">", (await view_recorded_time(howlFrameMapGet(e, "timestamp"), howlFrameMapGet(e, "ledger_recorded_at"))), "</span>", "<span><span class=\"what\">", (await view_esc(action)), "</span>", "<span class=\"who\"> ", (await view_esc(howlFrameMapGet(e, "actor"))), "</span>"]).join("");
 //line mission_view.howl:696
 {
-let detail = String(howlFrameMapGet(e, "detail"));
+let detail = ((_v) => _v == null ? "" : String(_v))(howlFrameMapGet(e, "detail"));
 //line mission_view.howl:697
 if ((detail === "")) {
 //line mission_view.howl:698
@@ -1426,7 +1678,7 @@ let found = "";
 //line demo.howl:45
 for (let m of howlFrameMapGet(doc, "missions")) {
 //line demo.howl:46
-if ((String(howlFrameMapGet(m, "id")) === id)) {
+if ((((_v) => _v == null ? "" : String(_v))(howlFrameMapGet(m, "id")) === id)) {
 //line demo.howl:47
 {
 let mine = [];
@@ -1437,8 +1689,8 @@ found = "1";
 //line demo.howl:50
 for (let e of events) {
 //line demo.howl:51
-if ((String(howlFrameMapGet(e, "mission_id")) === id)) {
-howlFrameAppend(mine, e)
+if ((((_v) => _v == null ? "" : String(_v))(howlFrameMapGet(e, "mission_id")) === id)) {
+mine = howlFrameAppend(mine, e)
 } else {
 //line demo.howl:51
 {
@@ -1510,7 +1762,7 @@ if ((howlFrameListLen(missions) > 0)) {
 {
 let first = howlFrameListGet(missions, 0);
 //line demo.howl:85
-(await open_mission(String(howlFrameMapGet(first, "id"))))
+(await open_mission(((_v) => _v == null ? "" : String(_v))(howlFrameMapGet(first, "id"))))
 }
 } else {
 //line demo.howl:87

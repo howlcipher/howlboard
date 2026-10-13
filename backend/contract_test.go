@@ -7,17 +7,20 @@ package backend_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"testing"
 	"time"
@@ -73,6 +76,10 @@ func resolveHowlFrameBin(root string) string {
 // grant and waits for readiness by polling, rather than sleeping a fixed
 // interval and hoping.
 func startServer(t *testing.T, caps string, wantReady bool) {
+	startServerWithFixtureGrants(t, caps, wantReady, true)
+}
+
+func startServerWithFixtureGrants(t *testing.T, caps string, wantReady bool, grantFixture bool) {
 	t.Helper()
 	root := repoRoot(t)
 
@@ -88,8 +95,46 @@ func startServer(t *testing.T, caps string, wantReady bool) {
 	// wrong server with the wrong data.
 	requireFreePort(t)
 
+	// Fixture URLs get exact test-only host/port grants in an isolated artifact.
+	// Production source and its two public GitHub destination scopes stay intact.
+	artifact := "backend/server.hfbc"
+	fixtureChanged := false
+	source, err := os.ReadFile(filepath.Join(root, "backend", "server.howl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, endpoint := range []struct{ key, host string }{
+		{"HOWLBOARD_FACTORY_SNAPSHOT_URL", "raw.githubusercontent.com"},
+		{"HOWLBOARD_FACTORY_TIP_URL", "github.com"},
+	} {
+		host := endpoint.host
+		if raw := os.Getenv(endpoint.key); grantFixture && raw != "" {
+			u, err := url.Parse(raw)
+			if err != nil || u.Host == "" {
+				t.Fatalf("invalid fixture URL %q", raw)
+			}
+			host = u.Host
+			fixtureChanged = true
+		}
+		if !bytes.Contains(source, []byte("network:fetch="+endpoint.host)) {
+			t.Fatalf("missing production scope %s", endpoint.host)
+		}
+		source = bytes.ReplaceAll(source, []byte("network:fetch="+endpoint.host), []byte("network:fetch="+host))
+		caps += ",network:fetch=" + host
+	}
+	if fixtureChanged {
+		dir := t.TempDir()
+		fixtureSource := filepath.Join(dir, "server.howl")
+		artifact = filepath.Join(dir, "server.hfbc")
+		if err := os.WriteFile(fixtureSource, source, 0600); err != nil {
+			t.Fatal(err)
+		}
+		if output, err := exec.Command(resolveHowlFrameBin(root), "-compile-bc", fixtureSource, "-o", artifact).CombinedOutput(); err != nil {
+			t.Fatalf("compile isolated fixture grants: %v %s", err, output)
+		}
+	}
 	cmd := exec.Command(resolveHowlFrameBin(root),
-		"-run-bc", "-allow-caps", caps, "backend/server.hfbc")
+		"-run-bc", "-allow-caps", caps, artifact)
 	cmd.Dir = root
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	output := &bytes.Buffer{}
@@ -236,7 +281,7 @@ func seed(t *testing.T) {
 }
 
 func TestMissionAPIContract(t *testing.T) {
-	startServer(t, "network,database,filesystem", true)
+	startServer(t, "network,database,filesystem,environment", true)
 
 	t.Run("empty before seeding", func(t *testing.T) {
 		status, body := get(t, "/api/missions")
@@ -631,19 +676,17 @@ func TestMissionAPIContract(t *testing.T) {
 	})
 }
 
-// A denied capability must reach the client as a failure. Before the VM was
-// made to fail closed this returned 200 with an empty body, so a blocked store
-// access was indistinguishable from a completed request.
+// Missing parent grants must deny handler registration before serving requests.
+// This protects the current explicit handler-grant attenuation contract.
 func TestDeniedCapabilityFailsClosed(t *testing.T) {
-	startServer(t, "network", true)
-
-	status, _, body := request(t, http.MethodGet, "/api/missions", "")
-	if status != http.StatusInternalServerError {
-		t.Fatalf("database-denied request = %d %q, want 500", status, body)
-	}
-	failure := decodeObject(t, body)
-	if failure["code"] != "CAPABILITY_DENIED" {
-		t.Fatalf("failure code = %v, want CAPABILITY_DENIED (%s)", failure["code"], body)
+	root := repoRoot(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, resolveHowlFrameBin(root), "-run-bc", "-allow-caps", "network", "backend/server.hfbc")
+	cmd.Dir = root
+	output, err := cmd.CombinedOutput()
+	if ctx.Err() != nil || err == nil || !strings.Contains(string(output), "CAPABILITY_DENIED") {
+		t.Fatalf("missing handler grants must fail closed: err=%v output=%s", err, output)
 	}
 }
 
@@ -1663,5 +1706,21 @@ eval(code);
 	}
 	if !strings.Contains(string(output), "ok") {
 		t.Fatalf("factory render harness output = %q", output)
+	}
+}
+
+func TestDeniedFactoryFetchIsNotAbsent(t *testing.T) {
+	var hits atomic.Int64
+	stub := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { hits.Add(1); w.Write([]byte(`{}`)) }))
+	defer stub.Close()
+	t.Setenv("HOWLBOARD_FACTORY_SNAPSHOT_URL", stub.URL+"/remote-snapshot.json")
+	startServerWithFixtureGrants(t, "network,database,filesystem,environment", true, false)
+	status, _, body := request(t, http.MethodGet, "/api/factory/status?source=published", "")
+	if status != http.StatusInternalServerError {
+		t.Fatalf("denied fetch status %d: %s", status, body)
+	}
+	failure := decodeObject(t, body)
+	if failure["error"] != "FACTORY_FETCH_DENIED" || failure["reason"] != "NETWORK_CAPABILITY_DENIED" || hits.Load() != 0 {
+		t.Fatalf("denial must not claim absence or contact target: %v hits=%d", failure, hits.Load())
 	}
 }

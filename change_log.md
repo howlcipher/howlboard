@@ -16,3 +16,10 @@
 Pin the documented and CI compiler to tested HowlFrame7631ce5d, with Go1.26.
 Floating upstream builds failed the existing demo seed contract after a null
 semantics change; newer compiler compatibility remains explicitly unverified.
+
+## Current Frame consumer compatibility
+
+* Explicit server/handler scopes retain the existing two-host public Factory read integration and fail closed on ungranted destinations. Local browser and static showcase host grants match the current scoped contract.
+* Missing authority, approval, TTL, verification and agent-count values use explicit nil checks. Scope errors are displayed as failures, not absent snapshots or completed work.
+* Test fixtures use exact ephemeral host/port grants in isolated artifacts; ordinary lifecycle tests use the shipped artifact. Runtime denied fetches make zero requests.
+* Compatible reviewed Frame candidate pin replaces the old pin only in this reviewable branch; the old Frame/Board pair is documented for rollback. Source-candidate desktop/mobile and historical real-ledger consumption pass; publication and merge are separate.
