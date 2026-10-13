@@ -47,7 +47,7 @@ static frontend).
 ```bash
 # 1. Build the HowlFrame compiler this repository compiles against.
 git clone https://github.com/howlcipher/howlframe /tmp/howlframe
-git -C /tmp/howlframe checkout --detach 56e20a4db4838bc3c6c7298c85d6a11d23441f57
+git -C /tmp/howlframe checkout --detach 7054d9662fbb3b9496e977d6441a82cbe46b00ac
 cd /tmp/howlframe && go build -o /path/to/howlboard/howlframe_bin howlframe.go
 
 # 2. Compile both tiers plus the ledger import tool.
@@ -67,7 +67,7 @@ make seed
 Open http://localhost:3000 and select a mission.
 
 The documented build and CI use the same reviewed compatible Frame source
-candidate, `56e20a4db4838bc3c6c7298c85d6a11d23441f57` (Frame PR183 and PR184). A moving compiler default branch
+candidate, `7054d9662fbb3b9496e977d6441a82cbe46b00ac` (Frame PR183 and PR184). A moving compiler default branch
 is not a compatibility guarantee. The old known-good pin
 `7631ce5d4008534ef681f35c3436922507d3f441` remains recorded for rollback together
 with Board3b1e007; mixing that older runtime with this source is not supported.
@@ -212,3 +212,5 @@ The check verifies real API loading, desktop/mobile overflow, keyboard focus,
 and browser errors, and saves screenshots. It creates no missions or approvals.
 It is a smoke check, not a complete accessibility audit. Backend contract
 tests remain the gate for state transitions and authority.
+
+Verification jobs explicitly set `HOWL_FORBID_LOCAL_INFERENCE=1`; these source checks do not authorize local model inference.

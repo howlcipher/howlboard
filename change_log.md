@@ -23,3 +23,5 @@ semantics change; newer compiler compatibility remains explicitly unverified.
 * Missing authority, approval, TTL, verification and agent-count values use explicit nil checks. Scope errors are displayed as failures, not absent snapshots or completed work.
 * Test fixtures use exact ephemeral host/port grants in isolated artifacts; ordinary lifecycle tests use the shipped artifact. Runtime denied fetches make zero requests.
 * Compatible reviewed Frame candidate pin replaces the old pin only in this reviewable branch; the old Frame/Board pair is documented for rollback. Source-candidate desktop/mobile and historical real-ledger consumption pass; publication and merge are separate.
+
+* Verification jobs forbid local inference, and the compatible candidate source pin includes that verified configuration.
