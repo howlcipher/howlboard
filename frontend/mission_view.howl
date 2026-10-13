@@ -83,8 +83,8 @@
   (defun ago (ts)
     (type_hint ts "any")
     (let (raw (to_string ts))
-      (if (= raw "")
-        (return "never")
+      (if (or (= raw "") (= raw "0") (= raw "<nil>"))
+        (return "not recorded")
         (let (delta (- (time_now) (to_int raw)))
           (let (out "just now")
             (do
@@ -104,6 +104,17 @@
           )
         )
       )
+    )
+  )
+  )
+
+  ; Ledger timestamps are source strings, not inferred execution times.
+  (export
+  (defun recorded_time (ts ledger_stamp)
+    (type_hint ts "any")
+    (type_hint ledger_stamp "any")
+    (let (stamp (to_string ledger_stamp))
+      (if (= stamp "") (return (call ago ts)) (return (str_join (list "recorded " (call esc stamp)) "")))
     )
   )
   )
@@ -190,6 +201,16 @@
         (set html (str_join (list html "<dt>Class</dt><dd>" (call esc (map_get m "task_class")) "</dd>") ""))
         (set html (str_join (list html "<dt>Updated</dt><dd>" (call ago (map_get m "updated_at")) "</dd>") ""))
         (set html (str_join (list html "<dt>Provenance</dt><dd>" (call provenance_badge (map_get m "provenance")) "</dd>") ""))
+        (let (recorded (to_string (map_get m "ledger_recorded_at")))
+          (if (= recorded "") (do)
+            (set html (str_join (list html "<dt>Ledger recorded</dt><dd>" (call esc recorded) "</dd>") ""))
+          )
+        )
+        (let (mode (to_string (map_get m "recording_mode")))
+          (if (= mode "") (do)
+            (set html (str_join (list html "<dt>Recording method</dt><dd>" (call esc mode) "</dd>") ""))
+          )
+        )
         (set html (str_join (list html "</dl>") ""))
         ; Informational depends_on only. Empty or missing → no dependency block.
         ; IDs go through esc into data-mission-id; handler source stays a constant
@@ -247,7 +268,7 @@
                     (set block (str_join (list block
                       "<span class=\"item-sub\">source " (call esc (map_get e "source"))
                       " &middot; " (call esc (map_get e "fingerprint"))
-                      " &middot; " (call ago (map_get e "collected_at")) "</span>") ""))
+                      " &middot; " (call recorded_time (map_get e "collected_at") (map_get e "ledger_recorded_at")) "</span>") ""))
                     (set html (str_join (list html block "</div>") ""))
                   )
                 )
@@ -465,7 +486,7 @@
       (let (html "<div class=\"stage\"><h3 data-step=\"07\">Execution</h3>")
         (do
           (if (= (to_string x) "")
-            (set html (str_join (list html "<p class=\"item-sub\">Execution has not started.</p>") ""))
+            (set html (str_join (list html "<p class=\"item-sub\">Execution details not recorded.</p>") ""))
             (do
               (set html (str_join (list html "<dl class=\"kv\">") ""))
               (let (raw_start (to_string (map_get x "started_at")))
@@ -476,7 +497,10 @@
                       (do)
                     )
                     (if (= started 0)
-                      (set html (str_join (list html "<dt>Started</dt><dd class=\"item-sub\">Never started.</dd>") ""))
+                      (if (= (map_get x "start_recorded") true)
+                        (set html (str_join (list html "<dt>Started</dt><dd class=\"item-sub\">Start event recorded; start time not recorded.</dd>") ""))
+                        (set html (str_join (list html "<dt>Started</dt><dd class=\"item-sub\">Start time not recorded.</dd>") ""))
+                      )
                       (set html (str_join (list html "<dt>Started</dt><dd>" (call ago started) "</dd>") ""))
                     )
                   )
@@ -580,9 +604,9 @@
       (let (html "<div class=\"stage\"><h3 data-step=\"08\">Verification</h3>")
         (do
           (if (= (to_string vs) "")
-            (set html (str_join (list html "<p class=\"item-sub\">No verification has run.</p>") ""))
+            (set html (str_join (list html "<p class=\"item-sub\">No verification details recorded.</p>") ""))
             (if (= (list_len vs) 0)
-              (set html (str_join (list html "<p class=\"item-sub\">No verification has run.</p>") ""))
+              (set html (str_join (list html "<p class=\"item-sub\">No verification details recorded.</p>") ""))
               (for v vs
                 (let (st (to_string (map_get v "status")))
                   (let (block "")
@@ -601,9 +625,19 @@
                             "<span class=\"item-sub\">" (call esc digest) "</span>") ""))
                         )
                       )
-                      (set block (str_join (list block
-                        "</span><span class=\"status status-" (call esc st) "\">" (call esc st)
-                        " (exit " (to_string (map_get v "exit_code")) ")</span></div>") ""))
+                      (let (summary (map_get v "summary"))
+                        (if (= (to_string summary) "") (do)
+                          (set block (str_join (list block "<span class=\"item-sub\">" (call esc (encode_json summary)) "</span>") ""))
+                        )
+                      )
+                      (let (exit_text (to_string (map_get v "exit_code")))
+                        (do
+                          (if (or (= exit_text "") (= exit_text "<nil>")) (set exit_text "not recorded") (do))
+                          (set block (str_join (list block
+                            "</span><span class=\"status status-" (call esc st) "\">" (call esc st)
+                            " (exit " (call esc exit_text) ")</span></div>") ""))
+                        )
+                      )
                       (set html (str_join (list html block) ""))
                     )
                   )
@@ -656,7 +690,7 @@
                     (if (= action "task_failed") (set cls "timeline-row t-fail") (do))
                     (if (= action "task_completed") (set cls "timeline-row t-done") (do))
                     (set html (str_join (list html
-                      "<div class=\"" cls "\"><span class=\"at\">" (call ago (map_get e "timestamp")) "</span>"
+                      "<div class=\"" cls "\"><span class=\"at\">" (call recorded_time (map_get e "timestamp") (map_get e "ledger_recorded_at")) "</span>"
                       "<span><span class=\"what\">" (call esc action) "</span>"
                       "<span class=\"who\"> " (call esc (map_get e "actor")) "</span>") ""))
                     (let (detail (to_string (map_get e "detail")))

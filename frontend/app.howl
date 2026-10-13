@@ -197,7 +197,7 @@
           (do
             (for e (map_get d "events")
               (set html (str_join (list html
-                "<div class=\"timeline-row\"><span class=\"at\">" (call view/ago (map_get e "timestamp"))
+                "<div class=\"timeline-row\"><span class=\"at\">" (call view/recorded_time (map_get e "timestamp") (map_get e "ledger_recorded_at"))
                 "</span><span><span class=\"what\">" (call view/esc (map_get e "action"))
                 "</span><span class=\"who\"> " (call view/esc (map_get e "actor"))
                 " &middot; " (call view/esc (map_get e "mission_id")) "</span></span></div>") ""))
