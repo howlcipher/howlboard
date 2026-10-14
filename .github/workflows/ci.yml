@@ -30,7 +30,7 @@ jobs:
       - name: Build HowlFrame Binary
         run: |
           git clone https://github.com/howlcipher/howlframe.git /tmp/howlframe
-          git -C /tmp/howlframe checkout --detach 7054d9662fbb3b9496e977d6441a82cbe46b00ac
+          git -C /tmp/howlframe checkout --detach 88e49597bf121ad1ea2ff05aabf3d9c4cc2ccfef
           cd /tmp/howlframe
           go build -o $GITHUB_WORKSPACE/howlframe_bin howlframe.go
           chmod +x $GITHUB_WORKSPACE/howlframe_bin

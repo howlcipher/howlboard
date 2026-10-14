@@ -1,5 +1,9 @@
 # Changelog
 
+## Verified current Frame integration
+
+- Pin README and CI to reviewed Frame `88e49597bf121ad1ea2ff05aabf3d9c4cc2ccfef`, integrating PR183–187. The relative-store fix keeps atomic temporary files beside the destination across filesystem mounts; stable opcode decoding preserves older artifacts. Full native lifecycle/race and browser consumption are verified separately from released installations.
+
 ## HOWL-E2E-UX-001
 
 - Compile browser targets explicitly and declare only the frontend network grant.
