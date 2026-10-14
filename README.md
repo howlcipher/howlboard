@@ -47,7 +47,7 @@ static frontend).
 ```bash
 # 1. Build the HowlFrame compiler this repository compiles against.
 git clone https://github.com/howlcipher/howlframe /tmp/howlframe
-git -C /tmp/howlframe checkout --detach 7631ce5d4008534ef681f35c3436922507d3f441
+git -C /tmp/howlframe checkout --detach 88e49597bf121ad1ea2ff05aabf3d9c4cc2ccfef
 cd /tmp/howlframe && go build -o /path/to/howlboard/howlframe_bin howlframe.go
 
 # 2. Compile both tiers plus the ledger import tool.
@@ -66,16 +66,25 @@ make seed
 
 Open http://localhost:3000 and select a mission.
 
-The documented build and CI use the same tested HowlFrame source commit,
-`7631ce5d4008534ef681f35c3436922507d3f441`. A moving compiler default branch
-is not a compatibility guarantee. Newer compiler null semantics currently break
-the demo seed contract; use this pin until that separate compatibility work is
-verified. This is a source build, not a published release-version assertion.
+The documented build and CI use the same reviewed compatible Frame source
+candidate, `88e49597bf121ad1ea2ff05aabf3d9c4cc2ccfef` (Frame PR183–187). A moving compiler default branch
+is not a compatibility guarantee. The old known-good pin
+`7631ce5d4008534ef681f35c3436922507d3f441` remains recorded for rollback together
+with Board3b1e007; mixing that older runtime with this source is not supported.
+This is source-candidate compatibility, not a published release assertion.
 
 `make build` produces `backend/server.hfbc`, `frontend/app.js`, and
-`build/ledger_import.hfbc`. The server runs as
-`howlframe_bin -run-bc -allow-caps network,database,filesystem
-backend/server.hfbc` — those three capabilities and nothing else.
+`build/ledger_import.hfbc`. `make run` grants serving network, database,
+filesystem and environment plus exactly the existing public Factory destinations
+`network:fetch=raw.githubusercontent.com` and `network:fetch=github.com`.
+The server declares the corresponding explicit handler subset. Coarse `network`
+authorizes serving and does not authorize outbound fetches. Custom Factory URL
+hosts require matching reviewed caller and handler scopes; denied requests return
+`FACTORY_FETCH_DENIED`, rather than claiming a missing snapshot.
+
+The local browser host grants only `network:fetch=localhost:8080`; the read-only
+showcase grants only its own page host. These host grants do not start Factory
+or approve any operation.
 
 ---
 
@@ -187,7 +196,7 @@ MIT. See [LICENSE](LICENSE).
 
 The frontend and published demo compile with `build --target=js`; bare-path
 compilation in current HowlFrame selects standalone bytecode. The hosting page
-grants only `network` through `globalThis.HOWLFRAME_ALLOW_CAPS` before loading
+grants only the API destination through `globalThis.HOWLFRAME_ALLOW_CAPS` before loading
 the compiled frontend. This requires the HowlFrame browser host-grant fix;
 older binaries can compile but cannot complete browser network calls.
 
@@ -203,3 +212,5 @@ The check verifies real API loading, desktop/mobile overflow, keyboard focus,
 and browser errors, and saves screenshots. It creates no missions or approvals.
 It is a smoke check, not a complete accessibility audit. Backend contract
 tests remain the gate for state transitions and authority.
+
+Verification jobs explicitly set `HOWL_FORBID_LOCAL_INFERENCE=1`; these source checks do not authorize local model inference.

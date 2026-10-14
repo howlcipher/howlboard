@@ -163,8 +163,8 @@
         </footer>
     </div>
 
-    <!-- The host grants only browser network access to the compiled client. -->
-    <script>globalThis.HOWLFRAME_ALLOW_CAPS = "network";</script>
+    <!-- The host grants only the documented local API destination to the compiled client. -->
+    <script>globalThis.HOWLFRAME_ALLOW_CAPS = "network:fetch=localhost:8080";</script>
     <script src="app.js"></script>
 </body>
 </html>

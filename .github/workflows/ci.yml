@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  HOWL_FORBID_LOCAL_INFERENCE: "1"
+
 jobs:
   validate:
     name: Build, Contract Tests, Docs & SEO Verification
@@ -27,7 +30,7 @@ jobs:
       - name: Build HowlFrame Binary
         run: |
           git clone https://github.com/howlcipher/howlframe.git /tmp/howlframe
-          git -C /tmp/howlframe checkout --detach 7631ce5d4008534ef681f35c3436922507d3f441
+          git -C /tmp/howlframe checkout --detach 88e49597bf121ad1ea2ff05aabf3d9c4cc2ccfef
           cd /tmp/howlframe
           go build -o $GITHUB_WORKSPACE/howlframe_bin howlframe.go
           chmod +x $GITHUB_WORKSPACE/howlframe_bin
