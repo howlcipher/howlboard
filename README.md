@@ -214,3 +214,13 @@ It is a smoke check, not a complete accessibility audit. Backend contract
 tests remain the gate for state transitions and authority.
 
 Verification jobs explicitly set `HOWL_FORBID_LOCAL_INFERENCE=1`; these source checks do not authorize local model inference.
+
+## Audit detail layout regression
+
+Audit timelines wrap long publication URLs and artifact digests while preserving their full text. Run the shared-renderer browser regression with the documented compiler and Chromium:
+
+```bash
+python3 -m pip install playwright
+python3 -m playwright install chromium
+HOWLFRAME_BIN=./howlframe_bin python3 scripts/test_timeline_layout.py
+```

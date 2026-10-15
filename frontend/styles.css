@@ -447,6 +447,7 @@ button:focus-visible, select:focus-visible, [tabindex]:focus-visible, a:focus-vi
 .timeline-row.t-fail::before { background: var(--failed); }
 .timeline-row.t-done::before { background: var(--completed); }
 .timeline-row .at { color: var(--text-faint); flex: none; font-size: 11px; }
+.timeline-row > span:not(.at) { min-width: 0; overflow-wrap: anywhere; }
 .timeline-row .what { color: var(--text); }
 .timeline-row .who { color: var(--text-dim); font-size: 11px; }
 

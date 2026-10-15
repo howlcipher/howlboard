@@ -52,3 +52,9 @@ jobs:
         run: |
           python3 scripts/test_seo.py
 
+
+      - name: Verify Audit Timeline Layout
+        run: |
+          python3 -m pip install playwright
+          python3 -m playwright install --with-deps chromium
+          python3 scripts/test_timeline_layout.py
