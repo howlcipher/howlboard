@@ -88,6 +88,17 @@ or approve any operation.
 
 ---
 
+## Approvals and origins
+
+HowlBoard has no login, so an approval names whoever the request says it is.
+It is stored with `"authenticated": false`; signed approvals belong to
+HowlChangeOps. To keep other web pages from acting through your browser, the API
+answers CORS only for the frontend's origins (`http://localhost:3000` and
+`http://127.0.0.1:3000`, or the comma-separated `HOWLBOARD_FRONTEND_ORIGINS`),
+and every state-changing route (create, state, approve, reject, delete, seed)
+refuses a request from any other origin with `403 ORIGIN_NOT_ALLOWED`. Local
+tools such as `curl` and `make seed` send no `Origin` header and work as before.
+
 ## Testing
 
 ```bash
