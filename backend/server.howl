@@ -29,11 +29,71 @@
   ; Response headers set inside a defun apply to the calling request. The
   ; request environment is the parent of the call environment, so the response
   ; writer resolves correctly.
-  (defun cors ()
+  ; The frontend's origins. A browser page from any other origin may read
+  ; nothing and change nothing (issue #17); local tools such as curl and
+  ; `make seed` send no Origin header and are unaffected.
+  ; HOWLBOARD_FRONTEND_ORIGINS (comma-separated) replaces the defaults.
+  (defun allowed_origins ()
+    (let (configured "")
+      (do
+        (try_let (v (env "HOWLBOARD_FRONTEND_ORIGINS"))
+          (catch err (do))
+          (set configured (call plain v))
+        )
+        (if (call blank configured)
+          (return "http://localhost:3000,http://127.0.0.1:3000")
+          (return configured)
+        )
+      )
+    )
+  )
+
+  (defun request_origin (req)
+    (let (origin "")
+      (do
+        (try_let (v (req_header req "origin"))
+          (catch err (do))
+          (set origin (call plain v))
+        )
+        (return origin)
+      )
+    )
+  )
+
+  (defun origin_allowed (req)
+    (type_hint return "bool")
+    (let (origin (call request_origin req))
+      (let (ok (= origin ""))
+        (do
+          (for allowed (str_split (call allowed_origins) ",")
+            (if (= allowed origin) (set ok true) (do))
+          )
+          (return ok)
+        )
+      )
+    )
+  )
+
+  (defun cors (req)
     (do
-      (res_header "Access-Control-Allow-Origin" "*")
+      (if (= (call request_origin req) "")
+        (do)
+        (if (call origin_allowed req)
+          (res_header "Access-Control-Allow-Origin" (call request_origin req))
+          (do)
+        )
+      )
+      (res_header "Vary" "Origin")
       (res_header "Access-Control-Allow-Methods" "GET, POST, OPTIONS")
       (res_header "Access-Control-Allow-Headers" "Content-Type, X-Howlboard-Factory-Source")
+    )
+  )
+
+  ; Mutating routes answer a preflight, or refuse a request from a foreign origin.
+  (defun preflight_or_refuse (req)
+    (if (call origin_allowed req)
+      (res_json 200 (dict ("status" "ok")))
+      (res_json 403 (dict ("error" "ORIGIN_NOT_ALLOWED") ("origin" (call request_origin req))))
     )
   )
 
@@ -984,7 +1044,7 @@
 
   (route "/api/missions" (lambda (req)
     (do
-      (call cors)
+      (call cors req)
       (if (= (req_method req) "OPTIONS")
         (res_json 200 (dict ("status" "ok")))
         (let (out (list))
@@ -1001,7 +1061,7 @@
 
   (route "/api/missions/get" (lambda (req)
     (do
-      (call cors)
+      (call cors req)
       (if (= (req_method req) "OPTIONS")
         (res_json 200 (dict ("status" "ok")))
         (try_let (body (parse_json Any req.body))
@@ -1042,7 +1102,7 @@
 
   (route "/api/dashboard" (lambda (req)
     (do
-      (call cors)
+      (call cors req)
       (if (= (req_method req) "OPTIONS")
         (res_json 200 (dict ("status" "ok")))
         (let (counts (dict
@@ -1110,7 +1170,7 @@
 
   (route "/api/projects" (lambda (req)
     (do
-      (call cors)
+      (call cors req)
       (if (= (req_method req) "OPTIONS")
         (res_json 200 (dict ("status" "ok")))
         ; Returned as a list of records rather than a keyed dict: there is no
@@ -1151,7 +1211,7 @@
 
   (route "/api/timeline" (lambda (req)
     (do
-      (call cors)
+      (call cors req)
       (if (= (req_method req) "OPTIONS")
         (res_json 200 (dict ("status" "ok")))
         (do
@@ -1169,9 +1229,9 @@
 
   (route "/api/missions/create" (lambda (req)
     (do
-      (call cors)
-      (if (= (req_method req) "OPTIONS")
-        (res_json 200 (dict ("status" "ok")))
+      (call cors req)
+      (if (or (= (req_method req) "OPTIONS") (not (call origin_allowed req)))
+        (call preflight_or_refuse req)
         (try_let (body (parse_json Any req.body))
           (catch err (res_json 400 (dict ("error" "INVALID_JSON"))))
           (let (title (to_string (map_get body "title")))
@@ -1245,9 +1305,9 @@
 
   (route "/api/missions/state" (lambda (req)
     (do
-      (call cors)
-      (if (= (req_method req) "OPTIONS")
-        (res_json 200 (dict ("status" "ok")))
+      (call cors req)
+      (if (or (= (req_method req) "OPTIONS") (not (call origin_allowed req)))
+        (call preflight_or_refuse req)
         (try_let (body (parse_json Any req.body))
           (catch err (res_json 400 (dict ("error" "INVALID_JSON"))))
           (let (id (to_string (map_get body "id")))
@@ -1305,9 +1365,9 @@
 
   (route "/api/missions/approve" (lambda (req)
     (do
-      (call cors)
-      (if (= (req_method req) "OPTIONS")
-        (res_json 200 (dict ("status" "ok")))
+      (call cors req)
+      (if (or (= (req_method req) "OPTIONS") (not (call origin_allowed req)))
+        (call preflight_or_refuse req)
         (try_let (body (parse_json Any req.body))
           (catch err (res_json 400 (dict ("error" "INVALID_JSON"))))
           (let (id (to_string (map_get body "id")))
@@ -1326,6 +1386,8 @@
                               (if (or (is_nil ttl) (= ttl "")) (set ttl 3600) (do))
                               (map_set auth "approval" (dict
                                 ("approver" approver)
+                                ; Self-asserted: HowlBoard has no login. Signed approvals are HowlChangeOps'.
+                                ("authenticated" false)
                                 ("issued_at" (time_now))
                                 ("expires_at" (+ (time_now) ttl))))
                               (map_set m "authority" auth)
@@ -1351,9 +1413,9 @@
 
   (route "/api/missions/reject" (lambda (req)
     (do
-      (call cors)
-      (if (= (req_method req) "OPTIONS")
-        (res_json 200 (dict ("status" "ok")))
+      (call cors req)
+      (if (or (= (req_method req) "OPTIONS") (not (call origin_allowed req)))
+        (call preflight_or_refuse req)
         (try_let (body (parse_json Any req.body))
           (catch err (res_json 400 (dict ("error" "INVALID_JSON"))))
           (let (id (to_string (map_get body "id")))
@@ -1393,9 +1455,9 @@
 
   (route "/api/missions/delete" (lambda (req)
     (do
-      (call cors)
-      (if (= (req_method req) "OPTIONS")
-        (res_json 200 (dict ("status" "ok")))
+      (call cors req)
+      (if (or (= (req_method req) "OPTIONS") (not (call origin_allowed req)))
+        (call preflight_or_refuse req)
         (try_let (body (parse_json Any req.body))
           (catch err (res_json 400 (dict ("error" "INVALID_JSON"))))
           (let (id (to_string (map_get body "id")))
@@ -1449,7 +1511,7 @@
 
   (defun dispatch_factory_status (req)
     (do
-      (call cors)
+      (call cors req)
       (if (= (req_method req) "OPTIONS")
         (res_json 200 (dict ("status" "ok")))
         (call serve_factory_status (call factory_source_from_request req))
@@ -1469,7 +1531,7 @@
   ; or improvements.md, and does not admit the row itself.
   (route "/api/factory/pending-row" (lambda (req)
     (do
-      (call cors)
+      (call cors req)
       (if (= (req_method req) "OPTIONS")
         (res_json 200 (dict ("status" "ok")))
         (try_let (body (parse_json Any req.body))
@@ -1484,9 +1546,9 @@
   ; demo records stay distinguishable from ingested ledger records.
   (route "/api/seed" (lambda (req)
     (do
-      (call cors)
-      (if (= (req_method req) "OPTIONS")
-        (res_json 200 (dict ("status" "ok")))
+      (call cors req)
+      (if (or (= (req_method req) "OPTIONS") (not (call origin_allowed req)))
+        (call preflight_or_refuse req)
         (try_let (raw (read_file "data/fixtures/missions.json"))
           (catch err (res_json 500 (dict ("error" "FIXTURES_UNREADABLE"))))
           (let (text (bytes_to_string raw))

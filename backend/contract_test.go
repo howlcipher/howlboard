@@ -204,6 +204,33 @@ func request(t *testing.T, method, path, payload string) (int, http.Header, []by
 	return resp.StatusCode, resp.Header, responseBody
 }
 
+// requestFrom sends a request carrying an Origin header, as a browser does.
+func requestFrom(t *testing.T, method, path, payload, origin string) (int, http.Header, []byte) {
+	t.Helper()
+	var body io.Reader
+	if payload != "" {
+		body = bytes.NewBufferString(payload)
+	}
+	req, err := http.NewRequest(method, baseURL()+path, body)
+	if err != nil {
+		t.Fatalf("build %s %s: %v", method, path, err)
+	}
+	if payload != "" {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	req.Header.Set("Origin", origin)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("send %s %s: %v", method, path, err)
+	}
+	defer resp.Body.Close()
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read %s %s response: %v", method, path, err)
+	}
+	return resp.StatusCode, resp.Header, raw
+}
+
 func post(t *testing.T, path, payload string) (int, map[string]any) {
 	t.Helper()
 	status, _, body := request(t, http.MethodPost, path, payload)
@@ -293,10 +320,14 @@ func TestMissionAPIContract(t *testing.T) {
 		}
 	})
 
-	t.Run("CORS headers are present", func(t *testing.T) {
-		_, header, _ := request(t, http.MethodGet, "/api/missions", "")
-		if got := header.Get("Access-Control-Allow-Origin"); got != "*" {
-			t.Fatalf("Access-Control-Allow-Origin = %q, want *", got)
+	t.Run("CORS admits only the frontend's origin", func(t *testing.T) {
+		_, header, _ := requestFrom(t, http.MethodGet, "/api/missions", "", "http://localhost:3000")
+		if got := header.Get("Access-Control-Allow-Origin"); got != "http://localhost:3000" {
+			t.Fatalf("frontend origin: Access-Control-Allow-Origin = %q", got)
+		}
+		_, header, _ = requestFrom(t, http.MethodGet, "/api/missions", "", "https://evil.example")
+		if got := header.Get("Access-Control-Allow-Origin"); got != "" {
+			t.Fatalf("foreign origin: Access-Control-Allow-Origin = %q, want none", got)
 		}
 	})
 
@@ -403,6 +434,17 @@ func TestMissionAPIContract(t *testing.T) {
 		}
 	})
 
+	t.Run("a page from another origin cannot approve", func(t *testing.T) {
+		status, _, raw := requestFrom(t, http.MethodPost, "/api/missions/approve",
+			`{"id":"CO-118","approver":"attacker"}`, "https://evil.example")
+		if status != http.StatusForbidden || !strings.Contains(string(raw), "ORIGIN_NOT_ALLOWED") {
+			t.Fatalf("foreign-origin approve = %d %s, want 403 ORIGIN_NOT_ALLOWED", status, raw)
+		}
+		if m := mission(t, "CO-118"); m["envelope_status"] == "DELEGATED_AUTHORITY_ALLOW" {
+			t.Fatal("a refused approval changed the mission")
+		}
+	})
+
 	t.Run("approval unblocks execution and is audited", func(t *testing.T) {
 		status, body := post(t, "/api/missions/approve",
 			`{"id":"CO-118","approver":"human_operator","ttl_seconds":3600}`)
@@ -411,6 +453,10 @@ func TestMissionAPIContract(t *testing.T) {
 		}
 		if body["envelope_status"] != "DELEGATED_AUTHORITY_ALLOW" {
 			t.Fatalf("post-approval envelope_status = %v", body["envelope_status"])
+		}
+		approval := body["authority"].(map[string]any)["approval"].(map[string]any)
+		if approval["authenticated"] != false {
+			t.Fatalf("approval must be marked unauthenticated: %v", approval)
 		}
 
 		status, body = post(t, "/api/missions/state", `{"id":"CO-118","state":"EXECUTING"}`)
