@@ -3,7 +3,7 @@
 ;   ledger_import <ledger.jsonl> [max_entries]
 ;
 ; Input is the ai.evidence_entry/v1 JSONL format written by
-; howlplane/src/control_plane/evidence_ledger.py. The VM reads the whole file
+; howlplane/src/howlplane/control_plane/evidence_ledger.py. The VM reads the whole file
 ; into memory and every line costs instructions, so this consumes a slice
 ; rather than a multi-gigabyte ledger:
 ;

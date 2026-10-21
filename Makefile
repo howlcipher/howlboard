@@ -36,7 +36,7 @@ seed:
 ## Project a HowlPlane evidence-ledger slice into missions. Stop the server
 ## first: it holds the store in memory and would overwrite the import.
 ##   make import LEDGER=/path/to/slice.jsonl MAX=3000
-LEDGER ?= data/fixtures/ledger_slice.jsonl
+LEDGER ?= data/fixtures/ledger_sample.jsonl
 MAX ?= 2000
 import: build
 	$(HOWLFRAME_BIN) -run-bc -allow-caps filesystem,database \
