@@ -36,11 +36,15 @@ seed:
 ## Project a HowlPlane evidence-ledger slice into missions. Stop the server
 ## first: it holds the store in memory and would overwrite the import.
 ##   make import LEDGER=/path/to/slice.jsonl MAX=3000
+## The slice is validated whole before anything is written; MAX is an exact
+## ceiling and the file may be at most 3 MiB. The memory budget is the VM's
+## cumulative allocation charge, sized so a 3 MiB slice of ordinary records fits.
 LEDGER ?= data/fixtures/ledger_sample.jsonl
 MAX ?= 2000
 import: build
 	$(HOWLFRAME_BIN) -run-bc -allow-caps filesystem,database \
-		-max-instructions 200000000 build/ledger_import.hfbc $(LEDGER) $(MAX)
+		-max-instructions 200000000 -max-memory-bytes 268435456 \
+		build/ledger_import.hfbc $(LEDGER) $(MAX)
 
 ## Sync the published demo's data with the fixtures the application loads, so
 ## the GitHub Pages showcase cannot drift from the product it illustrates.

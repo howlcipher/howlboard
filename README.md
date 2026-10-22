@@ -127,11 +127,28 @@ plane — into missions.
 
 ```bash
 # The VM reads the whole file into memory, so consume a slice.
-head -n 5000 /path/to/evidence_ledger.jsonl > /tmp/slice.jsonl
+head -n 2000 /path/to/evidence_ledger.jsonl > /tmp/slice.jsonl
 
-make import LEDGER=/tmp/slice.jsonl MAX=5000
+make import LEDGER=/tmp/slice.jsonl MAX=2000
 make run
 ```
+
+The whole slice is validated before anything is written, using EvidenceDesk's
+ledger module from HowlFrame (`tools/ledger_import/evidence_ledger.howl`,
+vendored; see `tools/ledger_import/VENDORED.md`). Each nonblank line must be a
+JSON object with schema `ai.evidence_entry/v1`, nonempty string `entry_id`,
+`task_id`, `agent_id` and `action`, and a unique `entry_id`; `entry_id`,
+`task_id` and `agent_id` may be at most 120 characters (HowlPlane's schema sets
+no maximum; real ledger IDs are far shorter). A malformed, duplicated or
+over-limit line fails the import with its line number (exit 3), and the
+existing stores are left exactly as they were: no line is skipped or truncated
+silently. That guarantee covers validation. If writing fails after validation
+(for example the existing timeline store is corrupt, or a narrower grant denies
+its write), missions can already be updated while the timeline is not; the
+previous importer behaved the same way. `MAX` (default 2000) is an exact ceiling on nonblank lines
+and must be a positive integer (otherwise exit 2); the file may be at most
+3 MiB, about 3,000 typical HowlPlane records. Slices with many verification
+records per task cost more and can exceed `make import`'s memory budget sooner.
 
 The importer creates verification checks only for verification events with a non-null summary. It preserves the recorded result and summary; missing exit codes and check times stay absent. A result such as `passed` does not imply exit code 0.
 
