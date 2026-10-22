@@ -146,6 +146,8 @@ func TestLedgerImportRejectsInvalidLedgerWithoutWriting(t *testing.T) {
 		{"missing task_id", ledgerLine(t, map[string]any{"entry_id": "a"}), "10", 3, "invalid_ledger at line 1: task_id must be a string"},
 		{"empty agent_id", ledgerLine(t, map[string]any{"entry_id": "a", "task_id": "T", "agent_id": ""}), "10", 3, "invalid_ledger at line 1: agent_id must not be empty"},
 		{"duplicate entry_id", ledgerLine(t, valid("a", "T")) + ledgerLine(t, valid("a", "U")), "10", 3, "invalid_ledger at line 2: Duplicate entry_id"},
+		{"entry_id over 120 characters", ledgerLine(t, valid(strings.Repeat("e", 121), "T")), "10", 3, "invalid_ledger at line 1: entry_id exceeds 120 characters"},
+		{"task_id over 120 characters", ledgerLine(t, valid("a", strings.Repeat("t", 121))), "10", 3, "invalid_ledger at line 1: task_id exceeds 120 characters"},
 		{"empty file", "", "10", 3, "invalid_ledger: Ledger has no records"},
 		{"blank lines only", "\n  \n", "10", 3, "invalid_ledger: Ledger has no records"},
 		{"over entry limit", ledgerLine(t, valid("a", "T")) + ledgerLine(t, valid("b", "T")) + ledgerLine(t, valid("c", "T")), "2", 3, "payload_too_large at line 3: Nonblank entry limit exceeded"},
@@ -203,6 +205,11 @@ func TestLedgerImportEntryLimitAndOptionalMetadata(t *testing.T) {
 	dir := t.TempDir()
 	if code, stdout, stderr := runImporter(t, artifact, dir, "", writeLedger(t, dir, content.String()), "5"); code != 0 || stdout != "entries=5\nmissions=5\n" {
 		t.Fatalf("exact limit: exit %d %q %q", code, stdout, stderr)
+	}
+	dir = t.TempDir()
+	longest := ledgerLine(t, map[string]any{"entry_id": strings.Repeat("e", 120), "task_id": strings.Repeat("t", 120), "agent_id": strings.Repeat("a", 120)})
+	if code, stdout, stderr := runImporter(t, artifact, dir, "", writeLedger(t, dir, longest), "5"); code != 0 || stdout != "entries=1\nmissions=1\n" {
+		t.Fatalf("120-character IDs: exit %d %q %q", code, stdout, stderr)
 	}
 	for _, metadata := range []any{nil, "not an object"} {
 		dir := t.TempDir()

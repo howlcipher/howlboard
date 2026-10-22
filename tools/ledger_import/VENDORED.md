@@ -18,4 +18,6 @@ commit and hash together, and rerun the ledger import tests.
 entries, 3 MiB). EvidenceDesk itself keeps `parse` and its frozen 262144-byte
 ceiling. The module's validation is a bounded subset of the HowlPlane schema
 (`schema`, the four identifiers, unique `entry_id`); it does not validate the
-other fields.
+other fields. It is also stricter in one place: `entry_id`, `task_id` and
+`agent_id` may be at most 120 characters, where the HowlPlane schema sets no
+maximum.

@@ -13,10 +13,11 @@
 ; ledger module (evidence_ledger.howl, vendored from HowlFrame; see
 ; VENDORED.md): every nonblank line must be a JSON object with schema
 ; ai.evidence_entry/v1, nonempty string entry_id, task_id, agent_id and action,
-; and a unique entry_id. A malformed, duplicated or over-limit line fails the
-; import with its line number, and the existing stores stay as they were; no
-; line is skipped or truncated silently. max_entries (default 2000) is an exact
-; ceiling on nonblank lines, and the file may be at most 3 MiB.
+; a unique entry_id, and IDs of at most 120 characters. A malformed, duplicated
+; or over-limit line fails the import with its line number, and the existing
+; stores stay as they were; no line is skipped or truncated silently.
+; max_entries (default 2000) is an exact ceiling on nonblank lines, and the file
+; may be at most 3 MiB.
 ;
 ; Records are written with provenance LEDGER, and any entry whose artifact path
 ; shows it came from a pytest run is additionally marked origin=test_fixture.
