@@ -47,14 +47,15 @@ static frontend).
 ```bash
 # 1. Build the HowlFrame compiler this repository compiles against.
 git clone https://github.com/howlcipher/howlframe /tmp/howlframe
-git -C /tmp/howlframe checkout --detach 88e49597bf121ad1ea2ff05aabf3d9c4cc2ccfef
+git -C /tmp/howlframe checkout --detach a154ddac2cddb20c75965ba5d5e9dfefcc6ad2ac
 cd /tmp/howlframe && go build -o /path/to/howlboard/howlframe_bin howlframe.go
 
 # 2. Compile both tiers plus the ledger import tool.
 cd /path/to/howlboard
 make build
 
-# 3. Run the mission API (port 8080).
+# 3. For writes, supply HOWLBOARD_WRITE_TOKEN through your secret channel.
+#    Without it the API is read-only. Run on port 8080.
 make run
 
 # 4. In a second terminal, serve the interface (port 3000).
@@ -67,7 +68,7 @@ make seed
 Open http://localhost:3000 and select a mission.
 
 The documented build and CI use the same reviewed compatible Frame source
-candidate, `88e49597bf121ad1ea2ff05aabf3d9c4cc2ccfef` (Frame PR183–187). A moving compiler default branch
+candidate, `a154ddac2cddb20c75965ba5d5e9dfefcc6ad2ac` (through merged Frame #211; includes existing fetch header support). A moving compiler default branch
 is not a compatibility guarantee. The old known-good pin
 `7631ce5d4008534ef681f35c3436922507d3f441` remains recorded for rollback together
 with Board3b1e007; mixing that older runtime with this source is not supported.
@@ -90,14 +91,28 @@ or approve any operation.
 
 ## Approvals and origins
 
-HowlBoard has no login, so an approval names whoever the request says it is.
-It is stored with `"authenticated": false`; signed approvals belong to
-HowlChangeOps. To keep other web pages from acting through your browser, the API
-answers CORS only for the frontend's origins (`http://localhost:3000` and
-`http://127.0.0.1:3000`, or the comma-separated `HOWLBOARD_FRONTEND_ORIGINS`),
-and every state-changing route (create, state, approve, reject, delete, seed)
-refuses a request from any other origin with `403 ORIGIN_NOT_ALLOWED`. Local
-tools such as `curl` and `make seed` send no `Origin` header and work as before.
+Every state-changing route requires POST and an explicit bearer credential,
+including `/api/seed`. Configure `HOWLBOARD_WRITE_TOKEN` with a random 64-character
+lowercase hexadecimal value supplied through your deployment's secret channel.
+Missing/malformed configuration disables writes. Give authorized API/CLI clients
+that token in the `Authorization` header; `make seed` reads the environment and
+passes the header on stdin, avoiding a secret in curl's argument list. Enter the
+same token into the frontend password field; it stays in the page input and is
+not placed in URLs or persistent browser storage. Serve remotely only over TLS.
+
+Unsupported mutation methods return405; missing/wrong authorization returns401.
+OPTIONS is nonmutating preflight. Configured frontend origins remain an additional
+browser restriction; foreign/opaque origins are rejected even with a valid token.
+Missing Origin is allowed only when explicit token authentication succeeds.
+CORS is not authentication. Browser forms have no ambient credential to attach.
+Read-only projections and the offline validated ledger import remain unchanged.
+
+This shared application credential does not establish human identity or ModelB.
+Approval names remain caller assertions, `authenticated` stays false, and records
+label `authorization_guarantee=shared_api_token` and no independent identity.
+Protected ChangeOps operations still require the separate protected authority.
+See [the HTTP route/access inventory](docs/http_authorization.md) for scope and
+verification limits, including the restricted browser reproduction.
 
 ## Testing
 

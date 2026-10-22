@@ -31,7 +31,8 @@ run-frontend:
 
 ## Load the demo missions into a running server.
 seed:
-	curl -s -X POST http://localhost:$(PORT)/api/seed
+	@test -n "$$HOWLBOARD_WRITE_TOKEN" || { echo 'HOWLBOARD_WRITE_TOKEN is required' >&2; exit 1; }
+	@printf 'Authorization: Bearer %s\n' "$$HOWLBOARD_WRITE_TOKEN" | curl --fail --silent --show-error --header @- -X POST http://localhost:$(PORT)/api/seed
 
 ## Project a HowlPlane evidence-ledger slice into missions. Stop the server
 ## first: it holds the store in memory and would overwrite the import.

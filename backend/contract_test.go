@@ -94,6 +94,10 @@ func startServerWithFixtureGrants(t *testing.T, caps string, wantReady bool, gra
 // launchServer starts the server over whatever stores are in the repository
 // root, so a test can serve the output of a ledger import.
 func launchServer(t *testing.T, caps string, wantReady bool, grantFixture bool) {
+	launchServerWithWriteToken(t, caps, wantReady, grantFixture, syntheticWriteToken)
+}
+
+func launchServerWithWriteToken(t *testing.T, caps string, wantReady bool, grantFixture bool, token string) {
 	t.Helper()
 	root := repoRoot(t)
 
@@ -144,6 +148,7 @@ func launchServer(t *testing.T, caps string, wantReady bool, grantFixture bool) 
 	cmd := exec.Command(resolveHowlFrameBin(root),
 		"-run-bc", "-allow-caps", caps, artifact)
 	cmd.Dir = root
+	cmd.Env = append(os.Environ(), "HOWLBOARD_WRITE_TOKEN="+token)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	output := &bytes.Buffer{}
 	cmd.Stdout = output
@@ -197,6 +202,7 @@ func request(t *testing.T, method, path, payload string) (int, http.Header, []by
 	if err != nil {
 		t.Fatalf("build %s %s: %v", method, path, err)
 	}
+	req.Header.Set("Authorization", "Bearer "+syntheticWriteToken)
 	if payload != "" {
 		req.Header.Set("Content-Type", "application/json")
 	}
@@ -223,6 +229,7 @@ func requestFrom(t *testing.T, method, path, payload, origin string) (int, http.
 	if err != nil {
 		t.Fatalf("build %s %s: %v", method, path, err)
 	}
+	req.Header.Set("Authorization", "Bearer "+syntheticWriteToken)
 	if payload != "" {
 		req.Header.Set("Content-Type", "application/json")
 	}
