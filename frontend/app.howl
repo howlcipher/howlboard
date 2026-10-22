@@ -9,10 +9,28 @@
 
   (use "mission_view.howl" as view)
   (use "factory_view.howl" as factory)
+  (use "api_response.howl" as api_response)
 
   (defun api_url (path)
     (return (str_join (list "http://localhost:8080" path) ""))
   )
+
+  ; Kept only in the password input for this page lifetime. Never include this
+  ; access credential in a URL, persistent browser storage or approval record.
+  (defun mutation_headers ()
+    (type_hint return "dict")
+    (return (dict
+      ("Content-Type" "application/json")
+      ("Authorization" (str_join
+        (list "Bearer " (dom_value (dom_query "#write-token"))) ""))))
+  )
+
+  (defun mutation_succeeded (raw)
+    (type_hint return "bool")
+    (let (message (call api_response/error_message raw))
+      (do
+        (call show_error message)
+        (return (= message "")))))
 
   ; Mission rendering still uses view/esc, built from str_split and str_join.
   ; The Factory panel uses html_escape and attr_escape (factory_view.howl).
@@ -308,31 +326,32 @@
   (defun approve_mission (id)
     (type_hint return "void")
     (try_let (raw (fetch (call api_url "/api/missions/approve") "POST"
-        (str_join (list "{\"id\":\"" id "\",\"approver\":\"human_operator\",\"ttl_seconds\":3600}") "")))
+        (str_join (list "{\"id\":\"" id "\",\"approver\":\"human_operator\",\"ttl_seconds\":3600}") "")
+        (call mutation_headers)))
       (catch err (call show_error "Approval request failed."))
-      (do
-        (call refresh_all)
-        (call open_mission id)
-      )
+      (if (call mutation_succeeded raw)
+        (do (call refresh_all) (call open_mission id))
+        (do))
     )
   )
 
   (defun reject_mission (id)
     (type_hint return "void")
     (try_let (raw (fetch (call api_url "/api/missions/reject") "POST"
-        (str_join (list "{\"id\":\"" id "\",\"approver\":\"human_operator\",\"reason\":\"rejected from mission control\"}") "")))
+        (str_join (list "{\"id\":\"" id "\",\"approver\":\"human_operator\",\"reason\":\"rejected from mission control\"}") "")
+        (call mutation_headers)))
       (catch err (call show_error "Rejection request failed."))
-      (do
-        (call refresh_all)
-        (call open_mission id)
-      )
+      (if (call mutation_succeeded raw)
+        (do (call refresh_all) (call open_mission id))
+        (do))
     )
   )
 
   (defun advance_mission (id)
     (type_hint return "void")
     (try_let (raw (fetch (call api_url "/api/missions/state") "POST"
-        (str_join (list "{\"id\":\"" id "\",\"state\":\"EXECUTING\"}") "")))
+        (str_join (list "{\"id\":\"" id "\",\"state\":\"EXECUTING\"}") "")
+        (call mutation_headers)))
       (catch err (call show_error "State change failed."))
       (try_let (d (parse_json Any raw))
         (catch perr (call show_error "State response was not valid JSON."))
@@ -352,9 +371,10 @@
 
   (defun seed_board ()
     (type_hint return "void")
-    (try_let (raw (fetch (call api_url "/api/seed") "POST" "{}"))
+    (try_let (raw (fetch (call api_url "/api/seed") "POST" "{}"
+        (call mutation_headers)))
       (catch err (call show_error "Could not load demo missions."))
-      (call refresh_all)
+      (if (call mutation_succeeded raw) (call refresh_all) (do))
     )
   )
 

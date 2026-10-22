@@ -29,9 +29,8 @@
   ; Response headers set inside a defun apply to the calling request. The
   ; request environment is the parent of the call environment, so the response
   ; writer resolves correctly.
-  ; The frontend's origins. A browser page from any other origin may read
-  ; nothing and change nothing (issue #17); local tools such as curl and
-  ; `make seed` send no Origin header and are unaffected.
+  ; Origin is a browser request constraint, never client authentication.
+  ; Mutations also require the explicitly supplied deployment write token.
   ; HOWLBOARD_FRONTEND_ORIGINS (comma-separated) replaces the defaults.
   (defun allowed_origins ()
     (let (configured "")
@@ -85,7 +84,7 @@
       )
       (res_header "Vary" "Origin")
       (res_header "Access-Control-Allow-Methods" "GET, POST, OPTIONS")
-      (res_header "Access-Control-Allow-Headers" "Content-Type, X-Howlboard-Factory-Source")
+      (res_header "Access-Control-Allow-Headers" "Content-Type, Authorization, X-Howlboard-Factory-Source")
     )
   )
 
@@ -94,6 +93,51 @@
     (if (call origin_allowed req)
       (res_json 200 (dict ("status" "ok")))
       (res_json 403 (dict ("error" "ORIGIN_NOT_ALLOWED") ("origin" (call request_origin req))))
+    )
+  )
+
+  ; A non-ambient bearer token protects both browser and CLI writes. Missing
+  ; or malformed deployment configuration disables writes. Never reflect it
+  ; in errors, URLs, fixtures or authority records. This is application access
+  ; control, not independently authenticated human identity (Model B).
+  (defun write_authorized (req)
+    (type_hint return "bool")
+    (let (token "")
+      (let (authorization "")
+        (do
+          (try_let (v (env "HOWLBOARD_WRITE_TOKEN"))
+            (catch err (do))
+            (set token (call plain v)))
+          (try_let (v (req_header req "authorization"))
+            (catch err (do))
+            (set authorization (call plain v)))
+          (if (regex_match "^[a-f0-9]{64}$" token)
+            (return (secure_equal authorization (str_join (list "Bearer " token) "")))
+            (return false))
+        )
+      )
+    )
+  )
+
+  (defun mutation_allowed (req)
+    (type_hint return "bool")
+    (return (and (= (req_method req) "POST")
+      (and (call origin_allowed req) (call write_authorized req))))
+  )
+
+  (defun mutation_refuse (req)
+    (if (= (req_method req) "OPTIONS")
+      (call preflight_or_refuse req)
+      (if (!= (req_method req) "POST")
+        (do
+          (res_header "Allow" "POST, OPTIONS")
+          (res_json 405 (dict ("error" "METHOD_NOT_ALLOWED"))))
+        (if (not (call origin_allowed req))
+          (res_json 403 (dict ("error" "ORIGIN_NOT_ALLOWED")))
+          (do
+            (res_header "WWW-Authenticate" "Bearer")
+            (res_json 401 (dict ("error" "AUTHORIZATION_REQUIRED")))))
+      )
     )
   )
 
@@ -1230,8 +1274,8 @@
   (route "/api/missions/create" (lambda (req)
     (do
       (call cors req)
-      (if (or (= (req_method req) "OPTIONS") (not (call origin_allowed req)))
-        (call preflight_or_refuse req)
+      (if (not (call mutation_allowed req))
+        (call mutation_refuse req)
         (try_let (body (parse_json Any req.body))
           (catch err (res_json 400 (dict ("error" "INVALID_JSON"))))
           (let (title (to_string (map_get body "title")))
@@ -1306,8 +1350,8 @@
   (route "/api/missions/state" (lambda (req)
     (do
       (call cors req)
-      (if (or (= (req_method req) "OPTIONS") (not (call origin_allowed req)))
-        (call preflight_or_refuse req)
+      (if (not (call mutation_allowed req))
+        (call mutation_refuse req)
         (try_let (body (parse_json Any req.body))
           (catch err (res_json 400 (dict ("error" "INVALID_JSON"))))
           (let (id (to_string (map_get body "id")))
@@ -1366,8 +1410,8 @@
   (route "/api/missions/approve" (lambda (req)
     (do
       (call cors req)
-      (if (or (= (req_method req) "OPTIONS") (not (call origin_allowed req)))
-        (call preflight_or_refuse req)
+      (if (not (call mutation_allowed req))
+        (call mutation_refuse req)
         (try_let (body (parse_json Any req.body))
           (catch err (res_json 400 (dict ("error" "INVALID_JSON"))))
           (let (id (to_string (map_get body "id")))
@@ -1388,6 +1432,8 @@
                                 ("approver" approver)
                                 ; Self-asserted: HowlBoard has no login. Signed approvals are HowlChangeOps'.
                                 ("authenticated" false)
+                                ("authorization_guarantee" "shared_api_token")
+                                ("identity_assurance" "not_independently_authenticated")
                                 ("issued_at" (time_now))
                                 ("expires_at" (+ (time_now) ttl))))
                               (map_set m "authority" auth)
@@ -1414,8 +1460,8 @@
   (route "/api/missions/reject" (lambda (req)
     (do
       (call cors req)
-      (if (or (= (req_method req) "OPTIONS") (not (call origin_allowed req)))
-        (call preflight_or_refuse req)
+      (if (not (call mutation_allowed req))
+        (call mutation_refuse req)
         (try_let (body (parse_json Any req.body))
           (catch err (res_json 400 (dict ("error" "INVALID_JSON"))))
           (let (id (to_string (map_get body "id")))
@@ -1456,8 +1502,8 @@
   (route "/api/missions/delete" (lambda (req)
     (do
       (call cors req)
-      (if (or (= (req_method req) "OPTIONS") (not (call origin_allowed req)))
-        (call preflight_or_refuse req)
+      (if (not (call mutation_allowed req))
+        (call mutation_refuse req)
         (try_let (body (parse_json Any req.body))
           (catch err (res_json 400 (dict ("error" "INVALID_JSON"))))
           (let (id (to_string (map_get body "id")))
@@ -1547,8 +1593,8 @@
   (route "/api/seed" (lambda (req)
     (do
       (call cors req)
-      (if (or (= (req_method req) "OPTIONS") (not (call origin_allowed req)))
-        (call preflight_or_refuse req)
+      (if (not (call mutation_allowed req))
+        (call mutation_refuse req)
         (try_let (raw (read_file "data/fixtures/missions.json"))
           (catch err (res_json 500 (dict ("error" "FIXTURES_UNREADABLE"))))
           (let (text (bytes_to_string raw))

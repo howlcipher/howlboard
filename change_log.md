@@ -41,3 +41,7 @@ semantics change; newer compiler compatibility remains explicitly unverified.
 * Compatible reviewed Frame candidate pin replaces the old pin only in this reviewable branch; the old Frame/Board pair is documented for rollback. Source-candidate desktop/mobile and historical real-ledger consumption pass; publication and merge are separate.
 
 * Verification jobs forbid local inference, and the compatible candidate source pin includes that verified configuration.
+
+## Mission007 F1 defensive maintenance
+
+Require POST plus explicit constant-time bearer authorization for all six write routes, including seed; retain Origin restrictions as additional browser protection, never authentication. Default missing/malformed token disables writes. Frontend supplies Authorization from a nonpersistent password field; seed CLI uses header stdin. Approval records explicitly disclaim independent identity. Pin already-merged Frame211 for existing frontend fetch-header support. HTTP contract/no-effect regressions fail on merged Board20 baseline; Chromium exploit reproduction remains BLOCKED and is not counted as passed.

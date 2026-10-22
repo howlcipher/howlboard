@@ -1,0 +1,9 @@
+(module
+  ; fetch returns response text even for HTTP authorization failures. Keep the
+  ; response interpretation shared by real mutation handlers and their tests.
+  (export
+    (defun error_message ((raw string)) string
+      (try_let (response (parse_json Any raw))
+        (catch err (return "Invalid API response"))
+        (let (message (to_string (map_get response "error")))
+          (return message))))))
