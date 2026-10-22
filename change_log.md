@@ -1,5 +1,12 @@
 # Changelog
 
+## Ledger import validates with EvidenceDesk's ledger module
+
+- `tools/ledger_import` now validates the whole slice with EvidenceDesk's ledger module, vendored byte-identical from HowlFrame (`tools/ledger_import/evidence_ledger.howl`, provenance and hash in `VENDORED.md`), before writing anything. The projection into missions and timeline events is unchanged: on valid input both stores are identical to the previous importer's, including the 72-record sanitized sample.
+- Behavior changes, all on input the previous importer mishandled: malformed JSON, non-object lines, a wrong or missing schema, a missing or empty `entry_id`/`task_id`/`agent_id`/`action`, and duplicate `entry_id`s now fail the import with the line number (exit 3) instead of being skipped or counted twice; an empty or blank file fails instead of replacing the existing timeline with an empty one; more nonblank lines than `MAX` fail instead of importing `MAX + 1` and dropping the rest; `MAX` must be a positive integer (exit 2); files over 3 MiB fail with a diagnostic. On every failure the existing stores are byte-identical afterwards.
+- Fixes: an entry without `metadata` (optional in `ai.evidence_entry/v1`) or with non-object `metadata` no longer aborts the import with a raw `TYPE_ERROR`.
+- `make import` raises the VM's cumulative memory charge to 256 MiB so a 3 MiB slice fits; the documented 5000-line slice exceeded the previous default at typical record sizes. Grants are unchanged (`filesystem,database`).
+
 ## Audit detail layout
 
 - Wrap long audit timeline URLs and digests within mobile and desktop viewports without truncating evidence. Add a Chromium regression against the compiled shared renderer.

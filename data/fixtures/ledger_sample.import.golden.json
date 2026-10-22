@@ -1,0 +1,1151 @@
+{
+ "_comment": "Output of the pre-validation tools/ledger_import (HowlBoard f4c7bb5, compiled by HowlFrame 88e49597) on data/fixtures/ledger_sample.jsonl with MAX 2000. The current importer must reproduce it exactly.",
+ "howlboard_missions.json": {
+  "mission:CAC-552": {
+   "authority": {
+    "decision": "REQUIRE_APPROVAL",
+    "gates": []
+   },
+   "created_at": 0,
+   "description": "Projected from the HowlPlane control-plane evidence ledger.",
+   "evidence": [],
+   "execution": {},
+   "executor": "agy",
+   "id": "CAC-552",
+   "is_override": false,
+   "ledger_recorded_at": "2026-08-19T13:06:43.244705+00:00",
+   "origin": "control_plane",
+   "outcome": "task_completed",
+   "override_reason": "",
+   "plan": [],
+   "priority": "NORMAL",
+   "project": "",
+   "provenance": "LEDGER",
+   "reasoning": {},
+   "recommended_executor": "",
+   "risk_level": "",
+   "state": "COMPLETED",
+   "task_class": "",
+   "title": "CAC-552",
+   "updated_at": 0,
+   "verification": []
+  },
+  "mission:CAREER-BUG-25": {
+   "authority": {
+    "decision": "REQUIRE_APPROVAL",
+    "gates": []
+   },
+   "created_at": 0,
+   "description": "Projected from the HowlPlane control-plane evidence ledger.",
+   "evidence": [],
+   "execution": {},
+   "executor": "claude_code",
+   "id": "CAREER-BUG-25",
+   "is_override": true,
+   "ledger_recorded_at": "2026-08-18T22:33:32.586549+00:00",
+   "origin": "control_plane",
+   "outcome": "task_closed",
+   "override_reason": "Operator preference for complex prompt/heuristic scoring in Career_Agent_Core",
+   "plan": [],
+   "priority": "NORMAL",
+   "project": "Career_Agent_Core",
+   "provenance": "LEDGER",
+   "reasoning": {},
+   "recommended_executor": "agy",
+   "risk_level": "low",
+   "state": "CLOSED",
+   "task_class": "bug_fix",
+   "title": "CAREER-BUG-25",
+   "updated_at": 0,
+   "verification": []
+  },
+  "mission:CAREER-TEST-01": {
+   "authority": {
+    "decision": "REQUIRE_APPROVAL",
+    "gates": []
+   },
+   "created_at": 0,
+   "description": "Projected from the HowlPlane control-plane evidence ledger.",
+   "evidence": [],
+   "execution": {},
+   "executor": "agy",
+   "id": "CAREER-TEST-01",
+   "is_override": false,
+   "ledger_recorded_at": "2026-08-18T22:39:13.282214+00:00",
+   "origin": "control_plane",
+   "outcome": "task_closed",
+   "override_reason": "",
+   "plan": [],
+   "priority": "NORMAL",
+   "project": "Career_Agent_Core",
+   "provenance": "LEDGER",
+   "reasoning": {},
+   "recommended_executor": "agy",
+   "risk_level": "medium",
+   "state": "CLOSED",
+   "task_class": "test_improvement",
+   "title": "CAREER-TEST-01",
+   "updated_at": 0,
+   "verification": []
+  },
+  "mission:CHANGEOPS-SEC-01": {
+   "authority": {
+    "decision": "REQUIRE_APPROVAL",
+    "gates": []
+   },
+   "created_at": 0,
+   "description": "Projected from the HowlPlane control-plane evidence ledger.",
+   "evidence": [],
+   "execution": {},
+   "executor": "gemini_cli",
+   "id": "CHANGEOPS-SEC-01",
+   "is_override": true,
+   "ledger_recorded_at": "2026-08-18T22:34:26.093072+00:00",
+   "origin": "control_plane",
+   "outcome": "task_closed",
+   "override_reason": "Operator testing Gemini CLI on Go security patch",
+   "plan": [],
+   "priority": "NORMAL",
+   "project": "changeops",
+   "provenance": "LEDGER",
+   "reasoning": {},
+   "recommended_executor": "devin_cli",
+   "risk_level": "high",
+   "state": "CLOSED",
+   "task_class": "security_patch",
+   "title": "CHANGEOPS-SEC-01",
+   "updated_at": 0,
+   "verification": []
+  },
+  "mission:DEVOPS-TOOL-01": {
+   "authority": {
+    "decision": "REQUIRE_APPROVAL",
+    "gates": []
+   },
+   "created_at": 0,
+   "description": "Projected from the HowlPlane control-plane evidence ledger.",
+   "evidence": [],
+   "execution": {},
+   "executor": "codex",
+   "id": "DEVOPS-TOOL-01",
+   "is_override": true,
+   "ledger_recorded_at": "2026-08-18T22:35:42.013054+00:00",
+   "origin": "control_plane",
+   "outcome": "task_closed",
+   "override_reason": "Operator routing Python tool implementation to Codex",
+   "plan": [],
+   "priority": "NORMAL",
+   "project": "DevOps-Learn-by-Doing",
+   "provenance": "LEDGER",
+   "reasoning": {},
+   "recommended_executor": "agy",
+   "risk_level": "medium",
+   "state": "CLOSED",
+   "task_class": "refactor",
+   "title": "DEVOPS-TOOL-01",
+   "updated_at": 0,
+   "verification": []
+  },
+  "mission:FAIL-003": {
+   "authority": {
+    "decision": "REQUIRE_APPROVAL",
+    "gates": []
+   },
+   "created_at": 0,
+   "description": "Projected from the HowlPlane control-plane evidence ledger.",
+   "evidence": [
+    {
+     "description": "Artifact recorded at human_decision_requested",
+     "fingerprint": "ev-f7de35ece2ae",
+     "ledger_recorded_at": "2026-08-20T15:34:22.586276+00:00",
+     "recording_mode": "",
+     "ref": "/tmp/pytest-of-operator/pytest-143/test_repeated_remediation_fail0/repeated_fail_repo/.task_runs/FAIL-003/decision_packet.md",
+     "source": "howlplane control plane",
+     "type": "custom"
+    }
+   ],
+   "evidence_total": 1,
+   "execution": {},
+   "executor": "control_plane",
+   "id": "FAIL-003",
+   "is_override": null,
+   "ledger_recorded_at": "2026-08-20T15:34:22.586276+00:00",
+   "origin": "test_fixture",
+   "outcome": "",
+   "override_reason": "",
+   "plan": [],
+   "priority": "NORMAL",
+   "project": "repeated_fail_repo",
+   "provenance": "LEDGER",
+   "reasoning": {},
+   "recommended_executor": "",
+   "risk_level": "high",
+   "state": "AWAITING_APPROVAL",
+   "task_class": "feature",
+   "title": "FAIL-003",
+   "updated_at": 0,
+   "verification": []
+  },
+  "mission:GATE-TEST-01": {
+   "authority": {
+    "decision": "REQUIRE_APPROVAL",
+    "gates": []
+   },
+   "created_at": 0,
+   "description": "Projected from the HowlPlane control-plane evidence ledger.",
+   "evidence": [],
+   "execution": {},
+   "executor": "claude_code",
+   "id": "GATE-TEST-01",
+   "is_override": true,
+   "ledger_recorded_at": "2026-08-18T22:38:13.279088+00:00",
+   "origin": "control_plane",
+   "outcome": "task_closed",
+   "override_reason": "Operator override for human boundary security stress test",
+   "plan": [],
+   "priority": "NORMAL",
+   "project": "DevOps-Learn-by-Doing",
+   "provenance": "LEDGER",
+   "reasoning": {},
+   "recommended_executor": "devin_cli",
+   "risk_level": "critical",
+   "state": "CLOSED",
+   "task_class": "infrastructure",
+   "title": "GATE-TEST-01",
+   "updated_at": 0,
+   "verification": []
+  },
+  "mission:HF-48": {
+   "authority": {
+    "decision": "REQUIRE_APPROVAL",
+    "gates": []
+   },
+   "created_at": 0,
+   "description": "Projected from the HowlPlane control-plane evidence ledger.",
+   "evidence": [],
+   "execution": {},
+   "executor": "agy",
+   "id": "HF-48",
+   "is_override": false,
+   "ledger_recorded_at": "2026-08-19T01:08:23.740871+00:00",
+   "origin": "control_plane",
+   "outcome": "task_completed",
+   "override_reason": "",
+   "plan": [],
+   "priority": "NORMAL",
+   "project": "",
+   "provenance": "LEDGER",
+   "reasoning": {},
+   "recommended_executor": "",
+   "risk_level": "",
+   "state": "COMPLETED",
+   "task_class": "",
+   "title": "HF-48",
+   "updated_at": 0,
+   "verification": []
+  },
+  "mission:HOWL-BUG-48": {
+   "authority": {
+    "decision": "REQUIRE_APPROVAL",
+    "gates": []
+   },
+   "created_at": 0,
+   "description": "Projected from the HowlPlane control-plane evidence ledger.",
+   "evidence": [],
+   "execution": {},
+   "executor": "agy",
+   "id": "HOWL-BUG-48",
+   "is_override": true,
+   "ledger_recorded_at": "2026-08-18T22:30:46.223036+00:00",
+   "origin": "control_plane",
+   "outcome": "task_closed",
+   "override_reason": "Operator testing Antigravity on Go bytecode VM memory safety",
+   "plan": [],
+   "priority": "NORMAL",
+   "project": "howlframe",
+   "provenance": "LEDGER",
+   "reasoning": {},
+   "recommended_executor": "claude_code",
+   "risk_level": "medium",
+   "state": "CLOSED",
+   "task_class": "bug_fix",
+   "title": "HOWL-BUG-48",
+   "updated_at": 0,
+   "verification": []
+  },
+  "mission:HOWL-TEST-01": {
+   "authority": {
+    "decision": "REQUIRE_APPROVAL",
+    "gates": []
+   },
+   "created_at": 0,
+   "description": "Projected from the HowlPlane control-plane evidence ledger.",
+   "evidence": [],
+   "execution": {},
+   "executor": "codex",
+   "id": "HOWL-TEST-01",
+   "is_override": true,
+   "ledger_recorded_at": "2026-08-18T22:40:47.671463+00:00",
+   "origin": "control_plane",
+   "outcome": "task_closed",
+   "override_reason": "Codex test harness generation",
+   "plan": [],
+   "priority": "NORMAL",
+   "project": "howlframe",
+   "provenance": "LEDGER",
+   "reasoning": {},
+   "recommended_executor": "agy",
+   "risk_level": "medium",
+   "state": "CLOSED",
+   "task_class": "test_improvement",
+   "title": "HOWL-TEST-01",
+   "updated_at": 0,
+   "verification": []
+  },
+  "mission:IMP-48": {
+   "authority": {
+    "decision": "REQUIRE_APPROVAL",
+    "gates": []
+   },
+   "created_at": 0,
+   "description": "Projected from the HowlPlane control-plane evidence ledger.",
+   "evidence": [],
+   "execution": {},
+   "executor": "devin_cli",
+   "id": "IMP-48",
+   "is_override": true,
+   "ledger_recorded_at": "2026-08-18T22:37:52.860227+00:00",
+   "origin": "control_plane",
+   "outcome": "task_closed",
+   "override_reason": "Autonomous multi-system diagnostic check",
+   "plan": [],
+   "priority": "NORMAL",
+   "project": "ai_knowledge_library",
+   "provenance": "LEDGER",
+   "reasoning": {},
+   "recommended_executor": "agy",
+   "risk_level": "low",
+   "state": "CLOSED",
+   "task_class": "feature",
+   "title": "IMP-48",
+   "updated_at": 0,
+   "verification": []
+  },
+  "mission:IMP-49": {
+   "authority": {
+    "decision": "REQUIRE_APPROVAL",
+    "gates": []
+   },
+   "created_at": 0,
+   "description": "Projected from the HowlPlane control-plane evidence ledger.",
+   "evidence": [],
+   "execution": {},
+   "executor": "agy",
+   "id": "IMP-49",
+   "is_override": null,
+   "ledger_recorded_at": "2026-08-18T21:10:20.889535+00:00",
+   "origin": "control_plane",
+   "outcome": "task_closed",
+   "override_reason": "",
+   "plan": [],
+   "priority": "NORMAL",
+   "project": "",
+   "provenance": "LEDGER",
+   "reasoning": {},
+   "recommended_executor": "",
+   "risk_level": "medium",
+   "state": "CLOSED",
+   "task_class": "test_improvement",
+   "title": "IMP-49",
+   "updated_at": 0,
+   "verification": []
+  },
+  "mission:IMP-51": {
+   "authority": {
+    "decision": "REQUIRE_APPROVAL",
+    "gates": []
+   },
+   "created_at": 0,
+   "description": "Projected from the HowlPlane control-plane evidence ledger.",
+   "evidence": [],
+   "execution": {},
+   "executor": "claude_code",
+   "id": "IMP-51",
+   "is_override": null,
+   "ledger_recorded_at": "2026-08-18T20:29:15.653667+00:00",
+   "origin": "control_plane",
+   "outcome": "task_closed",
+   "override_reason": "",
+   "plan": [],
+   "priority": "NORMAL",
+   "project": "",
+   "provenance": "LEDGER",
+   "reasoning": {},
+   "recommended_executor": "",
+   "risk_level": "",
+   "state": "CLOSED",
+   "task_class": "",
+   "title": "IMP-51",
+   "updated_at": 0,
+   "verification": []
+  },
+  "mission:INFRA-201": {
+   "authority": {
+    "decision": "REQUIRE_APPROVAL",
+    "gates": []
+   },
+   "created_at": 0,
+   "description": "Projected from the HowlPlane control-plane evidence ledger.",
+   "evidence": [
+    {
+     "description": "Artifact recorded at human_decision_requested",
+     "fingerprint": "ev-80188e425d63",
+     "ledger_recorded_at": "2026-08-20T15:34:21.797504+00:00",
+     "recording_mode": "",
+     "ref": "/tmp/pytest-of-operator/pytest-143/test_human_authority_boundary_0/infra_repo/.task_runs/INFRA-201/decision_packet.md",
+     "source": "howlplane control plane",
+     "type": "custom"
+    }
+   ],
+   "evidence_total": 1,
+   "execution": {},
+   "executor": "control_plane",
+   "id": "INFRA-201",
+   "is_override": null,
+   "ledger_recorded_at": "2026-08-20T15:34:21.797504+00:00",
+   "origin": "test_fixture",
+   "outcome": "",
+   "override_reason": "",
+   "plan": [],
+   "priority": "NORMAL",
+   "project": "infra_repo",
+   "provenance": "LEDGER",
+   "reasoning": {},
+   "recommended_executor": "",
+   "risk_level": "critical",
+   "state": "AWAITING_APPROVAL",
+   "task_class": "infrastructure",
+   "title": "INFRA-201",
+   "updated_at": 0,
+   "verification": []
+  },
+  "mission:TASK-110": {
+   "authority": {
+    "decision": "ALLOW",
+    "gates": [],
+    "reason": "approval recorded in the evidence ledger"
+   },
+   "created_at": 0,
+   "description": "Projected from the HowlPlane control-plane evidence ledger.",
+   "evidence": [
+    {
+     "description": "Artifact recorded at human_approval",
+     "fingerprint": "ev-485f8c43c073",
+     "ledger_recorded_at": "2026-08-20T15:32:14.815025+00:00",
+     "recording_mode": "",
+     "ref": "/tmp/pytest-of-operator/pytest-136/test_scenario_10_status_ux_and0/.task_runs/TASK-110/human_decision.json",
+     "source": "howlplane control plane",
+     "type": "custom"
+    },
+    {
+     "description": "Artifact recorded at human_approval",
+     "fingerprint": "ev-cc45ccad3a1b",
+     "ledger_recorded_at": "2026-08-20T15:32:41.186510+00:00",
+     "recording_mode": "",
+     "ref": "/tmp/pytest-of-operator/pytest-138/test_scenario_10_status_ux_and0/.task_runs/TASK-110/human_decision.json",
+     "source": "howlplane control plane",
+     "type": "custom"
+    },
+    {
+     "description": "Artifact recorded at human_approval",
+     "fingerprint": "ev-b1de97937b45",
+     "ledger_recorded_at": "2026-08-20T15:32:56.142622+00:00",
+     "recording_mode": "",
+     "ref": "/tmp/pytest-of-operator/pytest-139/test_scenario_10_status_ux_and0/.task_runs/TASK-110/human_decision.json",
+     "source": "howlplane control plane",
+     "type": "custom"
+    },
+    {
+     "description": "Artifact recorded at human_approval",
+     "fingerprint": "ev-b0496a49b64c",
+     "ledger_recorded_at": "2026-08-20T15:33:10.587290+00:00",
+     "recording_mode": "",
+     "ref": "/tmp/pytest-of-operator/pytest-140/test_scenario_10_status_ux_and0/.task_runs/TASK-110/human_decision.json",
+     "source": "howlplane control plane",
+     "type": "custom"
+    },
+    {
+     "description": "Artifact recorded at human_approval",
+     "fingerprint": "ev-7befa8abc746",
+     "ledger_recorded_at": "2026-08-20T15:34:01.199267+00:00",
+     "recording_mode": "",
+     "ref": "/tmp/pytest-of-operator/pytest-142/test_scenario_10_status_ux_and0/.task_runs/TASK-110/human_decision.json",
+     "source": "howlplane control plane",
+     "type": "custom"
+    }
+   ],
+   "evidence_total": 5,
+   "execution": {},
+   "executor": "human_operator",
+   "id": "TASK-110",
+   "is_override": null,
+   "ledger_recorded_at": "2026-08-20T15:34:01.199267+00:00",
+   "origin": "test_fixture",
+   "outcome": "",
+   "override_reason": "",
+   "plan": [],
+   "priority": "NORMAL",
+   "project": "",
+   "provenance": "LEDGER",
+   "reasoning": {},
+   "recommended_executor": "",
+   "risk_level": "",
+   "state": "CREATED",
+   "task_class": "",
+   "title": "TASK-110",
+   "updated_at": 0,
+   "verification": []
+  },
+  "mission:TASK-113": {
+   "authority": {
+    "decision": "DENY",
+    "gates": [],
+    "reason": "rejection recorded in the evidence ledger"
+   },
+   "created_at": 0,
+   "description": "Projected from the HowlPlane control-plane evidence ledger.",
+   "evidence": [
+    {
+     "description": "Artifact recorded at human_rejection",
+     "fingerprint": "ev-22e8ce7ada4e",
+     "ledger_recorded_at": "2026-08-20T15:33:11.066062+00:00",
+     "recording_mode": "",
+     "ref": "/tmp/pytest-of-operator/pytest-140/test_cli_reject_command0/.task_runs/TASK-113/human_decision.json",
+     "source": "howlplane control plane",
+     "type": "custom"
+    },
+    {
+     "description": "Artifact recorded at human_rejection",
+     "fingerprint": "ev-6b22244061ba",
+     "ledger_recorded_at": "2026-08-20T15:33:39.973647+00:00",
+     "recording_mode": "",
+     "ref": "/tmp/pytest-of-operator/pytest-141/test_cli_reject_command0/.task_runs/TASK-113/human_decision.json",
+     "source": "howlplane control plane",
+     "type": "custom"
+    },
+    {
+     "description": "Artifact recorded at human_rejection",
+     "fingerprint": "ev-26ced90a4724",
+     "ledger_recorded_at": "2026-08-20T15:34:01.359437+00:00",
+     "recording_mode": "",
+     "ref": "/tmp/pytest-of-operator/pytest-142/test_cli_reject_command0/.task_runs/TASK-113/human_decision.json",
+     "source": "howlplane control plane",
+     "type": "custom"
+    }
+   ],
+   "evidence_total": 3,
+   "execution": {},
+   "executor": "human_operator",
+   "id": "TASK-113",
+   "is_override": null,
+   "ledger_recorded_at": "2026-08-20T15:34:01.359437+00:00",
+   "origin": "test_fixture",
+   "outcome": "",
+   "override_reason": "",
+   "plan": [],
+   "priority": "NORMAL",
+   "project": "",
+   "provenance": "LEDGER",
+   "reasoning": {},
+   "recommended_executor": "",
+   "risk_level": "",
+   "state": "CLOSED",
+   "task_class": "",
+   "title": "TASK-113",
+   "updated_at": 0,
+   "verification": []
+  }
+ },
+ "howlboard_timeline.json": {
+  "feed": {
+   "events": [
+    {
+     "action": "task_created",
+     "actor": "claude_code",
+     "detail": "Task initialized and routed",
+     "ledger_recorded_at": "2026-08-18T20:27:33.687181+00:00",
+     "mission_id": "IMP-51",
+     "recording_mode": ""
+    },
+    {
+     "action": "review_submitted",
+     "actor": "claude_code",
+     "detail": "Generated 5 briefs; identified finding F001",
+     "ledger_recorded_at": "2026-08-18T20:28:50.617431+00:00",
+     "mission_id": "IMP-51",
+     "recording_mode": ""
+    },
+    {
+     "action": "reconciliation_completed",
+     "actor": "claude_code",
+     "detail": "F001 remediated in tests/test_docs.py",
+     "ledger_recorded_at": "2026-08-18T20:28:53.441479+00:00",
+     "mission_id": "IMP-51",
+     "recording_mode": ""
+    },
+    {
+     "action": "boundary_checked",
+     "actor": "claude_code",
+     "detail": "All actions within autonomous authority",
+     "ledger_recorded_at": "2026-08-18T20:28:55.465348+00:00",
+     "mission_id": "IMP-51",
+     "recording_mode": ""
+    },
+    {
+     "action": "verification_executed",
+     "actor": "claude_code",
+     "detail": "passed",
+     "ledger_recorded_at": "2026-08-18T20:29:13.212983+00:00",
+     "mission_id": "IMP-51",
+     "recording_mode": ""
+    },
+    {
+     "action": "task_closed",
+     "actor": "claude_code",
+     "detail": "complete",
+     "ledger_recorded_at": "2026-08-18T20:29:15.653667+00:00",
+     "mission_id": "IMP-51",
+     "recording_mode": ""
+    },
+    {
+     "action": "task_created",
+     "actor": "agy",
+     "detail": "",
+     "ledger_recorded_at": "2026-08-18T21:10:20.888792+00:00",
+     "mission_id": "IMP-49",
+     "recording_mode": ""
+    },
+    {
+     "action": "review_submitted",
+     "actor": "agy",
+     "detail": "",
+     "ledger_recorded_at": "2026-08-18T21:10:20.889022+00:00",
+     "mission_id": "IMP-49",
+     "recording_mode": ""
+    },
+    {
+     "action": "remediation_started",
+     "actor": "agy",
+     "detail": "",
+     "ledger_recorded_at": "2026-08-18T21:10:20.889200+00:00",
+     "mission_id": "IMP-49",
+     "recording_mode": ""
+    },
+    {
+     "action": "remediation_completed",
+     "actor": "agy",
+     "detail": "Fixed tautological eval in test_qa_approval_gate_eval by executing orch.graph.nodes['qa'].invoke directly, and added None feedback test case.",
+     "ledger_recorded_at": "2026-08-18T21:10:20.889275+00:00",
+     "mission_id": "IMP-49",
+     "recording_mode": ""
+    },
+    {
+     "action": "control_plane_defect_caught",
+     "actor": "agy",
+     "detail": "",
+     "ledger_recorded_at": "2026-08-18T21:10:20.889369+00:00",
+     "mission_id": "IMP-49",
+     "recording_mode": ""
+    },
+    {
+     "action": "verification_executed",
+     "actor": "agy",
+     "detail": "passed",
+     "ledger_recorded_at": "2026-08-18T21:10:20.889452+00:00",
+     "mission_id": "IMP-49",
+     "recording_mode": ""
+    },
+    {
+     "action": "task_closed",
+     "actor": "agy",
+     "detail": "complete",
+     "ledger_recorded_at": "2026-08-18T21:10:20.889535+00:00",
+     "mission_id": "IMP-49",
+     "recording_mode": ""
+    },
+    {
+     "action": "task_created",
+     "actor": "agy",
+     "detail": "",
+     "ledger_recorded_at": "2026-08-18T22:30:45.664838+00:00",
+     "mission_id": "HOWL-BUG-48",
+     "recording_mode": ""
+    },
+    {
+     "action": "review_submitted",
+     "actor": "agy",
+     "detail": "",
+     "ledger_recorded_at": "2026-08-18T22:30:45.795022+00:00",
+     "mission_id": "HOWL-BUG-48",
+     "recording_mode": ""
+    },
+    {
+     "action": "reconciliation_completed",
+     "actor": "agy",
+     "detail": "reconciliation_clean",
+     "ledger_recorded_at": "2026-08-18T22:30:45.937234+00:00",
+     "mission_id": "HOWL-BUG-48",
+     "recording_mode": ""
+    },
+    {
+     "action": "verification_executed",
+     "actor": "agy",
+     "detail": "passed",
+     "ledger_recorded_at": "2026-08-18T22:30:46.086537+00:00",
+     "mission_id": "HOWL-BUG-48",
+     "recording_mode": ""
+    },
+    {
+     "action": "task_closed",
+     "actor": "agy",
+     "detail": "complete",
+     "ledger_recorded_at": "2026-08-18T22:30:46.223036+00:00",
+     "mission_id": "HOWL-BUG-48",
+     "recording_mode": ""
+    },
+    {
+     "action": "task_created",
+     "actor": "claude_code",
+     "detail": "",
+     "ledger_recorded_at": "2026-08-18T22:33:31.604753+00:00",
+     "mission_id": "CAREER-BUG-25",
+     "recording_mode": ""
+    },
+    {
+     "action": "review_submitted",
+     "actor": "claude_code",
+     "detail": "",
+     "ledger_recorded_at": "2026-08-18T22:33:31.752550+00:00",
+     "mission_id": "CAREER-BUG-25",
+     "recording_mode": ""
+    },
+    {
+     "action": "reconciliation_completed",
+     "actor": "claude_code",
+     "detail": "reconciliation_clean",
+     "ledger_recorded_at": "2026-08-18T22:33:31.899898+00:00",
+     "mission_id": "CAREER-BUG-25",
+     "recording_mode": ""
+    },
+    {
+     "action": "verification_executed",
+     "actor": "claude_code",
+     "detail": "failed",
+     "ledger_recorded_at": "2026-08-18T22:33:32.038565+00:00",
+     "mission_id": "CAREER-BUG-25",
+     "recording_mode": ""
+    },
+    {
+     "action": "remediation_started",
+     "actor": "claude_code",
+     "detail": "",
+     "ledger_recorded_at": "2026-08-18T22:33:32.170998+00:00",
+     "mission_id": "CAREER-BUG-25",
+     "recording_mode": ""
+    },
+    {
+     "action": "remediation_completed",
+     "actor": "claude_code",
+     "detail": "fixed",
+     "ledger_recorded_at": "2026-08-18T22:33:32.313283+00:00",
+     "mission_id": "CAREER-BUG-25",
+     "recording_mode": ""
+    },
+    {
+     "action": "verification_executed",
+     "actor": "claude_code",
+     "detail": "passed",
+     "ledger_recorded_at": "2026-08-18T22:33:32.453055+00:00",
+     "mission_id": "CAREER-BUG-25",
+     "recording_mode": ""
+    },
+    {
+     "action": "task_closed",
+     "actor": "claude_code",
+     "detail": "complete",
+     "ledger_recorded_at": "2026-08-18T22:33:32.586549+00:00",
+     "mission_id": "CAREER-BUG-25",
+     "recording_mode": ""
+    },
+    {
+     "action": "task_created",
+     "actor": "gemini_cli",
+     "detail": "",
+     "ledger_recorded_at": "2026-08-18T22:34:25.500639+00:00",
+     "mission_id": "CHANGEOPS-SEC-01",
+     "recording_mode": ""
+    },
+    {
+     "action": "review_submitted",
+     "actor": "gemini_cli",
+     "detail": "",
+     "ledger_recorded_at": "2026-08-18T22:34:25.648479+00:00",
+     "mission_id": "CHANGEOPS-SEC-01",
+     "recording_mode": ""
+    },
+    {
+     "action": "reconciliation_completed",
+     "actor": "gemini_cli",
+     "detail": "reconciliation_clean",
+     "ledger_recorded_at": "2026-08-18T22:34:25.794126+00:00",
+     "mission_id": "CHANGEOPS-SEC-01",
+     "recording_mode": ""
+    },
+    {
+     "action": "verification_executed",
+     "actor": "gemini_cli",
+     "detail": "passed",
+     "ledger_recorded_at": "2026-08-18T22:34:25.931512+00:00",
+     "mission_id": "CHANGEOPS-SEC-01",
+     "recording_mode": ""
+    },
+    {
+     "action": "task_closed",
+     "actor": "gemini_cli",
+     "detail": "complete",
+     "ledger_recorded_at": "2026-08-18T22:34:26.093072+00:00",
+     "mission_id": "CHANGEOPS-SEC-01",
+     "recording_mode": ""
+    },
+    {
+     "action": "task_created",
+     "actor": "codex",
+     "detail": "",
+     "ledger_recorded_at": "2026-08-18T22:35:41.019026+00:00",
+     "mission_id": "DEVOPS-TOOL-01",
+     "recording_mode": ""
+    },
+    {
+     "action": "review_submitted",
+     "actor": "codex",
+     "detail": "",
+     "ledger_recorded_at": "2026-08-18T22:35:41.178676+00:00",
+     "mission_id": "DEVOPS-TOOL-01",
+     "recording_mode": ""
+    },
+    {
+     "action": "reconciliation_completed",
+     "actor": "codex",
+     "detail": "reconciliation_clean",
+     "ledger_recorded_at": "2026-08-18T22:35:41.318333+00:00",
+     "mission_id": "DEVOPS-TOOL-01",
+     "recording_mode": ""
+    },
+    {
+     "action": "verification_executed",
+     "actor": "codex",
+     "detail": "failed",
+     "ledger_recorded_at": "2026-08-18T22:35:41.462095+00:00",
+     "mission_id": "DEVOPS-TOOL-01",
+     "recording_mode": ""
+    },
+    {
+     "action": "remediation_started",
+     "actor": "codex",
+     "detail": "",
+     "ledger_recorded_at": "2026-08-18T22:35:41.604257+00:00",
+     "mission_id": "DEVOPS-TOOL-01",
+     "recording_mode": ""
+    },
+    {
+     "action": "remediation_completed",
+     "actor": "codex",
+     "detail": "fixed",
+     "ledger_recorded_at": "2026-08-18T22:35:41.737759+00:00",
+     "mission_id": "DEVOPS-TOOL-01",
+     "recording_mode": ""
+    },
+    {
+     "action": "verification_executed",
+     "actor": "codex",
+     "detail": "passed",
+     "ledger_recorded_at": "2026-08-18T22:35:41.873869+00:00",
+     "mission_id": "DEVOPS-TOOL-01",
+     "recording_mode": ""
+    },
+    {
+     "action": "task_closed",
+     "actor": "codex",
+     "detail": "complete",
+     "ledger_recorded_at": "2026-08-18T22:35:42.013054+00:00",
+     "mission_id": "DEVOPS-TOOL-01",
+     "recording_mode": ""
+    },
+    {
+     "action": "task_created",
+     "actor": "devin_cli",
+     "detail": "",
+     "ledger_recorded_at": "2026-08-18T22:37:52.325354+00:00",
+     "mission_id": "IMP-48",
+     "recording_mode": ""
+    },
+    {
+     "action": "review_submitted",
+     "actor": "devin_cli",
+     "detail": "",
+     "ledger_recorded_at": "2026-08-18T22:37:52.463003+00:00",
+     "mission_id": "IMP-48",
+     "recording_mode": ""
+    },
+    {
+     "action": "reconciliation_completed",
+     "actor": "devin_cli",
+     "detail": "reconciliation_clean",
+     "ledger_recorded_at": "2026-08-18T22:37:52.596682+00:00",
+     "mission_id": "IMP-48",
+     "recording_mode": ""
+    },
+    {
+     "action": "verification_executed",
+     "actor": "devin_cli",
+     "detail": "passed",
+     "ledger_recorded_at": "2026-08-18T22:37:52.726652+00:00",
+     "mission_id": "IMP-48",
+     "recording_mode": ""
+    },
+    {
+     "action": "task_closed",
+     "actor": "devin_cli",
+     "detail": "complete",
+     "ledger_recorded_at": "2026-08-18T22:37:52.860227+00:00",
+     "mission_id": "IMP-48",
+     "recording_mode": ""
+    },
+    {
+     "action": "task_created",
+     "actor": "claude_code",
+     "detail": "",
+     "ledger_recorded_at": "2026-08-18T22:38:12.606817+00:00",
+     "mission_id": "GATE-TEST-01",
+     "recording_mode": ""
+    },
+    {
+     "action": "boundary_triggered",
+     "actor": "claude_code",
+     "detail": "awaiting_human",
+     "ledger_recorded_at": "2026-08-18T22:38:12.744618+00:00",
+     "mission_id": "GATE-TEST-01",
+     "recording_mode": ""
+    },
+    {
+     "action": "review_submitted",
+     "actor": "claude_code",
+     "detail": "",
+     "ledger_recorded_at": "2026-08-18T22:38:12.880065+00:00",
+     "mission_id": "GATE-TEST-01",
+     "recording_mode": ""
+    },
+    {
+     "action": "reconciliation_completed",
+     "actor": "claude_code",
+     "detail": "reconciliation_clean",
+     "ledger_recorded_at": "2026-08-18T22:38:13.010807+00:00",
+     "mission_id": "GATE-TEST-01",
+     "recording_mode": ""
+    },
+    {
+     "action": "human_decision",
+     "actor": "claude_code",
+     "detail": "approved",
+     "ledger_recorded_at": "2026-08-18T22:38:13.146690+00:00",
+     "mission_id": "GATE-TEST-01",
+     "recording_mode": ""
+    },
+    {
+     "action": "task_closed",
+     "actor": "claude_code",
+     "detail": "complete",
+     "ledger_recorded_at": "2026-08-18T22:38:13.279088+00:00",
+     "mission_id": "GATE-TEST-01",
+     "recording_mode": ""
+    },
+    {
+     "action": "task_created",
+     "actor": "agy",
+     "detail": "",
+     "ledger_recorded_at": "2026-08-18T22:39:12.748571+00:00",
+     "mission_id": "CAREER-TEST-01",
+     "recording_mode": ""
+    },
+    {
+     "action": "review_submitted",
+     "actor": "agy",
+     "detail": "",
+     "ledger_recorded_at": "2026-08-18T22:39:12.882439+00:00",
+     "mission_id": "CAREER-TEST-01",
+     "recording_mode": ""
+    },
+    {
+     "action": "reconciliation_completed",
+     "actor": "agy",
+     "detail": "reconciliation_clean",
+     "ledger_recorded_at": "2026-08-18T22:39:13.013596+00:00",
+     "mission_id": "CAREER-TEST-01",
+     "recording_mode": ""
+    },
+    {
+     "action": "verification_executed",
+     "actor": "agy",
+     "detail": "passed",
+     "ledger_recorded_at": "2026-08-18T22:39:13.140424+00:00",
+     "mission_id": "CAREER-TEST-01",
+     "recording_mode": ""
+    },
+    {
+     "action": "task_closed",
+     "actor": "agy",
+     "detail": "complete",
+     "ledger_recorded_at": "2026-08-18T22:39:13.282214+00:00",
+     "mission_id": "CAREER-TEST-01",
+     "recording_mode": ""
+    },
+    {
+     "action": "task_created",
+     "actor": "codex",
+     "detail": "",
+     "ledger_recorded_at": "2026-08-18T22:40:47.152264+00:00",
+     "mission_id": "HOWL-TEST-01",
+     "recording_mode": ""
+    },
+    {
+     "action": "review_submitted",
+     "actor": "codex",
+     "detail": "",
+     "ledger_recorded_at": "2026-08-18T22:40:47.284351+00:00",
+     "mission_id": "HOWL-TEST-01",
+     "recording_mode": ""
+    },
+    {
+     "action": "reconciliation_completed",
+     "actor": "codex",
+     "detail": "reconciliation_clean",
+     "ledger_recorded_at": "2026-08-18T22:40:47.414308+00:00",
+     "mission_id": "HOWL-TEST-01",
+     "recording_mode": ""
+    },
+    {
+     "action": "verification_executed",
+     "actor": "codex",
+     "detail": "passed",
+     "ledger_recorded_at": "2026-08-18T22:40:47.545322+00:00",
+     "mission_id": "HOWL-TEST-01",
+     "recording_mode": ""
+    },
+    {
+     "action": "task_closed",
+     "actor": "codex",
+     "detail": "complete",
+     "ledger_recorded_at": "2026-08-18T22:40:47.671463+00:00",
+     "mission_id": "HOWL-TEST-01",
+     "recording_mode": ""
+    },
+    {
+     "action": "task_completed",
+     "actor": "agy",
+     "detail": "passed",
+     "ledger_recorded_at": "2026-08-19T01:08:23.740871+00:00",
+     "mission_id": "HF-48",
+     "recording_mode": ""
+    },
+    {
+     "action": "task_completed",
+     "actor": "agy",
+     "detail": "passed",
+     "ledger_recorded_at": "2026-08-19T13:06:43.244705+00:00",
+     "mission_id": "CAC-552",
+     "recording_mode": ""
+    },
+    {
+     "action": "human_approval",
+     "actor": "human_operator",
+     "detail": "approved",
+     "ledger_recorded_at": "2026-08-20T15:32:14.815025+00:00",
+     "mission_id": "TASK-110",
+     "recording_mode": ""
+    },
+    {
+     "action": "human_approval",
+     "actor": "human_operator",
+     "detail": "approved",
+     "ledger_recorded_at": "2026-08-20T15:32:41.186510+00:00",
+     "mission_id": "TASK-110",
+     "recording_mode": ""
+    },
+    {
+     "action": "human_approval",
+     "actor": "human_operator",
+     "detail": "approved",
+     "ledger_recorded_at": "2026-08-20T15:32:56.142622+00:00",
+     "mission_id": "TASK-110",
+     "recording_mode": ""
+    },
+    {
+     "action": "human_approval",
+     "actor": "human_operator",
+     "detail": "approved",
+     "ledger_recorded_at": "2026-08-20T15:33:10.587290+00:00",
+     "mission_id": "TASK-110",
+     "recording_mode": ""
+    },
+    {
+     "action": "human_rejection",
+     "actor": "human_operator",
+     "detail": "rejected",
+     "ledger_recorded_at": "2026-08-20T15:33:11.066062+00:00",
+     "mission_id": "TASK-113",
+     "recording_mode": ""
+    },
+    {
+     "action": "human_rejection",
+     "actor": "human_operator",
+     "detail": "rejected",
+     "ledger_recorded_at": "2026-08-20T15:33:39.973647+00:00",
+     "mission_id": "TASK-113",
+     "recording_mode": ""
+    },
+    {
+     "action": "human_approval",
+     "actor": "human_operator",
+     "detail": "approved",
+     "ledger_recorded_at": "2026-08-20T15:34:01.199267+00:00",
+     "mission_id": "TASK-110",
+     "recording_mode": ""
+    },
+    {
+     "action": "human_rejection",
+     "actor": "human_operator",
+     "detail": "rejected",
+     "ledger_recorded_at": "2026-08-20T15:34:01.359437+00:00",
+     "mission_id": "TASK-113",
+     "recording_mode": ""
+    },
+    {
+     "action": "human_decision_requested",
+     "actor": "control_plane",
+     "detail": "",
+     "ledger_recorded_at": "2026-08-20T15:34:21.797504+00:00",
+     "mission_id": "INFRA-201",
+     "recording_mode": ""
+    },
+    {
+     "action": "human_decision_requested",
+     "actor": "control_plane",
+     "detail": "",
+     "ledger_recorded_at": "2026-08-20T15:34:22.586276+00:00",
+     "mission_id": "FAIL-003",
+     "recording_mode": ""
+    }
+   ]
+  }
+ }
+}

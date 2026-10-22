@@ -88,6 +88,14 @@ func startServerWithFixtureGrants(t *testing.T, caps string, wantReady bool, gra
 			t.Fatalf("clear store %s: %v", name, err)
 		}
 	}
+	launchServer(t, caps, wantReady, grantFixture)
+}
+
+// launchServer starts the server over whatever stores are in the repository
+// root, so a test can serve the output of a ledger import.
+func launchServer(t *testing.T, caps string, wantReady bool, grantFixture bool) {
+	t.Helper()
+	root := repoRoot(t)
 
 	// Refuse to run against somebody else's server. Without this the readiness
 	// poll below can be satisfied by a process already holding the port while

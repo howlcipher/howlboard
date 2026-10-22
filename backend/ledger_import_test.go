@@ -5,12 +5,14 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
 
 type ledgerTruthEntry struct {
 	Schema              string         `json:"schema"`
+	EntryID             string         `json:"entry_id"`
 	TaskID              string         `json:"task_id"`
 	AgentID             string         `json:"agent_id"`
 	Action              string         `json:"action"`
@@ -46,6 +48,7 @@ func TestLedgerImportTruth(t *testing.T) {
 	var content []byte
 	for index := range entries {
 		entries[index].Schema = "ai.evidence_entry/v1"
+		entries[index].EntryID = "truth-" + strconv.Itoa(index)
 		entries[index].AgentID = "test_coordinator"
 		entries[index].Artifact = "local-proof.log"
 		entries[index].Metadata = map[string]any{"recording_mode": manual}
