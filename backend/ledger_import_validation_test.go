@@ -148,6 +148,7 @@ func TestLedgerImportRejectsInvalidLedgerWithoutWriting(t *testing.T) {
 		{"duplicate entry_id", ledgerLine(t, valid("a", "T")) + ledgerLine(t, valid("a", "U")), "10", 3, "invalid_ledger at line 2: Duplicate entry_id"},
 		{"entry_id over 120 characters", ledgerLine(t, valid(strings.Repeat("e", 121), "T")), "10", 3, "invalid_ledger at line 1: entry_id exceeds 120 characters"},
 		{"task_id over 120 characters", ledgerLine(t, valid("a", strings.Repeat("t", 121))), "10", 3, "invalid_ledger at line 1: task_id exceeds 120 characters"},
+		{"agent_id over 120 characters", ledgerLine(t, map[string]any{"entry_id": "a", "task_id": "T", "agent_id": strings.Repeat("a", 121)}), "10", 3, "invalid_ledger at line 1: agent_id exceeds 120 characters"},
 		{"empty file", "", "10", 3, "invalid_ledger: Ledger has no records"},
 		{"blank lines only", "\n  \n", "10", 3, "invalid_ledger: Ledger has no records"},
 		{"over entry limit", ledgerLine(t, valid("a", "T")) + ledgerLine(t, valid("b", "T")) + ledgerLine(t, valid("c", "T")), "2", 3, "payload_too_large at line 3: Nonblank entry limit exceeded"},
