@@ -47,7 +47,7 @@ static frontend).
 ```bash
 # 1. Build the HowlFrame compiler this repository compiles against.
 git clone https://github.com/howlcipher/howlframe /tmp/howlframe
-git -C /tmp/howlframe checkout --detach a154ddac2cddb20c75965ba5d5e9dfefcc6ad2ac
+git -C /tmp/howlframe checkout --detach e77e008f7eb944f286414f4a5725b306fcc02d31
 cd /tmp/howlframe && go build -o /path/to/howlboard/howlframe_bin howlframe.go
 
 # 2. Compile both tiers plus the ledger import tool.
@@ -68,7 +68,7 @@ make seed
 Open http://localhost:3000 and select a mission.
 
 The documented build and CI use the same reviewed compatible Frame source
-candidate, `a154ddac2cddb20c75965ba5d5e9dfefcc6ad2ac` (through merged Frame #211; includes existing fetch header support). A moving compiler default branch
+candidate, `e77e008f7eb944f286414f4a5725b306fcc02d31` (through merged Frame #222; incorporates #212 checker tightening, #219, and #221 capability restrictions). A moving compiler default branch
 is not a compatibility guarantee. The old known-good pin
 `7631ce5d4008534ef681f35c3436922507d3f441` remains recorded for rollback together
 with Board3b1e007; mixing that older runtime with this source is not supported.
