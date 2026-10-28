@@ -167,6 +167,26 @@ def main():
         "factory start" in limitations and "Pending" in limitations,
     )
 
+    # 11. One compiler pin: CI, the README and the published page install the
+    # release through scripts/install_howlframe.sh instead of each naming a source commit.
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
+    readme = (ROOT / "README.md").read_text()
+    installer = (ROOT / "scripts" / "install_howlframe.sh").read_text()
+    pinned = re.search(r"^VERSION=(v\d+\.\d+\.\d+)$", installer, re.M)
+    check("installer pins a HowlFrame release version", pinned is not None)
+    check(
+        "CI installs HowlFrame through the pinned installer",
+        "scripts/install_howlframe.sh" in ci and "go build" not in ci,
+    )
+    check(
+        "README and published page install through the pinned installer",
+        "scripts/install_howlframe.sh" in readme and "scripts/install_howlframe.sh" in index,
+    )
+    check(
+        "README names the installer's release version",
+        pinned is not None and f"`{pinned.group(1)}`" in readme,
+    )
+
     print()
     if FAILURES:
         print(f"{len(FAILURES)} documentation check(s) failed")

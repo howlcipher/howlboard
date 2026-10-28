@@ -41,17 +41,16 @@ around the distinction between a claim and a verified fact:
 
 ## Quickstart
 
-Requires Go 1.26 (to build the HowlFrame compiler) and Python 3 (to serve the
-static frontend).
+Requires curl, Python 3 (to serve the static frontend), and Go 1.26 for
+`make test` only.
 
 ```bash
-# 1. Build the HowlFrame compiler this repository compiles against.
-git clone https://github.com/howlcipher/howlframe /tmp/howlframe
-git -C /tmp/howlframe checkout --detach e77e008f7eb944f286414f4a5725b306fcc02d31
-cd /tmp/howlframe && go build -o /path/to/howlboard/howlframe_bin howlframe.go
+# 1. Install the HowlFrame release this repository compiles against as
+#    ./howlframe_bin, checked against the SHA-256 pinned in the script.
+cd /path/to/howlboard
+scripts/install_howlframe.sh
 
 # 2. Compile both tiers plus the ledger import tool.
-cd /path/to/howlboard
 make build
 
 # 3. For writes, supply HOWLBOARD_WRITE_TOKEN through your secret channel.
@@ -67,12 +66,26 @@ make seed
 
 Open http://localhost:3000 and select a mission.
 
-The documented build and CI use the same reviewed compatible Frame source
-candidate, `e77e008f7eb944f286414f4a5725b306fcc02d31` (through merged Frame #222; incorporates #212 checker tightening, #219, and #221 capability restrictions). A moving compiler default branch
-is not a compatibility guarantee. The old known-good pin
-`7631ce5d4008534ef681f35c3436922507d3f441` remains recorded for rollback together
-with Board3b1e007; mixing that older runtime with this source is not supported.
-This is source-candidate compatibility, not a published release assertion.
+The documented build and CI use the published HowlFrame release
+[v0.2.0](https://github.com/howlcipher/howlframe/releases/tag/v0.2.0) (tag
+`v0.2.0`, commit `77cb55c87076aef846a601f18ace6bba78a12010`).
+`scripts/install_howlframe.sh` holds the version and the archive checksums for
+Linux and macOS, and installs nothing if the download does not match. v0.2.0
+contains the previous source pin `e77e008f7eb944f286414f4a5725b306fcc02d31`.
+A moving compiler default branch is not a compatibility guarantee.
+
+On another platform, or to roll back, build the compiler from source and place it
+at `./howlframe_bin`:
+
+```bash
+git clone https://github.com/howlcipher/howlframe /tmp/howlframe
+git -C /tmp/howlframe checkout --detach v0.2.0   # or e77e008f7eb944f286414f4a5725b306fcc02d31
+cd /tmp/howlframe && go build -o /path/to/howlboard/howlframe_bin howlframe.go
+```
+
+The older known-good pin `7631ce5d4008534ef681f35c3436922507d3f441` remains
+recorded for rollback together with Board3b1e007; mixing that older runtime
+with this source is not supported.
 
 `make build` produces `backend/server.hfbc`, `frontend/app.js`, and
 `build/ledger_import.hfbc`. `make run` grants serving network, database,

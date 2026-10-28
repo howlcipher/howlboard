@@ -1,5 +1,11 @@
 # Changelog
 
+## Compile against the published HowlFrame v0.2.0 release
+
+- CI and the README quickstart install the published HowlFrame v0.2.0 binary with `scripts/install_howlframe.sh` instead of cloning HowlFrame and building commit `e77e008f`. The script checks the archive against a SHA-256 pinned in this repository, confirms the binary reports `HowlFrame 0.2.0`, and installs nothing otherwise. v0.2.0 contains `e77e008f`; HowlBoard's sources, tests and grants are unchanged.
+- Go is now needed only for `make test`. Building from source remains documented for other platforms and for rollback (`v0.2.0`, `e77e008f`, `7631ce5d`).
+- `scripts/test_docs.py` checks that CI, the README and the published page use the installer, and that the README names its release version.
+
 ## Ledger import validates with EvidenceDesk's ledger module
 
 - `tools/ledger_import` now validates the whole slice with EvidenceDesk's ledger module, vendored byte-identical from HowlFrame (`tools/ledger_import/evidence_ledger.howl`, provenance and hash in `VENDORED.md`), before writing anything. The projection into missions and timeline events is unchanged: on valid input both stores are identical to the previous importer's, including the 72-record sanitized sample.
