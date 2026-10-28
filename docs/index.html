@@ -452,16 +452,14 @@ File-Backed Native Record Stores (howlboard.json &amp; howlboard_activity.json)<
                             <span class="code-title">[BASH // BUILD_AND_RUN]</span>
                             <button class="btn-copy" type="button">[COPY]</button>
                         </div>
-                        <pre><code># 1. Clone repositories side-by-side
-git clone https://github.com/howlcipher/howlframe.git
+                        <pre><code># 1. Clone HowlBoard
 git clone https://github.com/howlcipher/howlboard.git
+cd howlboard
 
-# 2. Build HowlFrame compiler binary
-cd howlframe
-go build -o ../howlboard/howlframe_bin howlframe.go
+# 2. Install the pinned HowlFrame release (checksum-verified)
+scripts/install_howlframe.sh
 
 # 3. Build HowlBoard (compiles frontend JS and backend HFBC)
-cd ../howlboard
 make build
 
 # 4. Run the backend VM server

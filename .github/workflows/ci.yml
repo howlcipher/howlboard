@@ -27,13 +27,10 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Build HowlFrame Binary
-        run: |
-          git clone https://github.com/howlcipher/howlframe.git /tmp/howlframe
-          git -C /tmp/howlframe checkout --detach e77e008f7eb944f286414f4a5725b306fcc02d31
-          cd /tmp/howlframe
-          go build -o $GITHUB_WORKSPACE/howlframe_bin howlframe.go
-          chmod +x $GITHUB_WORKSPACE/howlframe_bin
+      # The released compiler, checked against the SHA-256 pinned in the script.
+      # Go above is only for the backend contract tests.
+      - name: Install HowlFrame Release Binary
+        run: scripts/install_howlframe.sh
 
       - name: Run Backend Contract Tests
         run: |
