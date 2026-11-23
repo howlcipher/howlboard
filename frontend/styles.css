@@ -560,6 +560,11 @@ textarea { min-height: 64px; resize: vertical; }
 
 .factory-note { color: var(--text-faint); font-size: 11px; margin-top: 10px; }
 
+.improvement-body { padding: 14px 16px; }
+.improvement-body label { display: block; margin-bottom: 4px; }
+.improvement-body textarea:focus-visible { outline: 2px solid var(--phosphor); outline-offset: 2px; }
+#improvement-results { margin-top: 12px; overflow-wrap: anywhere; }
+
 /* -------------------------------------------------------------- responsive */
 
 @media (max-width: 900px) {

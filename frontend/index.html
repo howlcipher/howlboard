@@ -101,6 +101,27 @@
             </div>
         </section>
 
+        <section class="panel" aria-labelledby="improvement-heading">
+            <div class="panel-head">
+                <h2 id="improvement-heading">HowlLoop improvements</h2>
+            </div>
+            <div class="improvement-body">
+                <form id="improvement-form">
+                    <p id="improvement-help">Run <code>howlloop report</code> and paste the JSON to view it in this tab.
+                        The snapshot is self-reported.</p>
+                    <label for="improvement-json">HowlLoop report JSON</label>
+                    <textarea id="improvement-json" aria-describedby="improvement-help" rows="3"
+                              autocomplete="off" spellcheck="false"></textarea>
+                    <div class="filters">
+                        <button id="improvement-view" type="button">View report</button>
+                        <button type="reset">Clear report</button>
+                    </div>
+                </form>
+                <p id="improvement-status" role="status">No report loaded.</p>
+                <div id="improvement-results"></div>
+            </div>
+        </section>
+
         <section aria-labelledby="projects-heading">
             <h2 id="projects-heading" class="section-heading">Workstreams</h2>
             <div id="projects" class="projects"></div>
