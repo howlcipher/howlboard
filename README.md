@@ -102,6 +102,29 @@ or approve any operation.
 
 ---
 
+## View HowlLoop improvements
+
+Generate a bounded snapshot from your local [HowlLoop](https://github.com/howlcipher/howlloop)
+store.
+
+```bash
+howlloop report --store /path/to/events.sqlite
+```
+
+Paste the JSON into **HowlLoop improvements** on the locally served Board and
+choose **View report**. The view shows outcomes by source, recent operations
+and missing timings, recurring opportunities, lifecycle decisions, and median
+elapsed times with sample counts grouped by environment and source revision.
+Opportunity counts describe the runs included as evidence. Use **Clear report**
+to remove the pasted input and results from the tab.
+
+The snapshot is self-reported. Board leaves the report in the tab and uses no
+app-managed storage. View Factory's existing panel for approval state. Compare
+timing groups only with the workload and environment evidence from the
+experiment. The view accepts `howl.improvement_report/v1` JSON up to 131,072
+UTF-16 code units. The pinned browser runtime rejects integer tokens outside
+JavaScript's exact integer range, including in fields the view omits.
+
 ## Approvals and origins
 
 Every state-changing route requires POST and an explicit bearer credential,
@@ -132,7 +155,8 @@ verification limits, including the restricted browser reproduction.
 ```bash
 make test                       # contract tests against the real bytecode server
 python3 scripts/test_docs.py    # documentation matches implementation
-python3 scripts/test_seo.py     # published site metadata
+python3 scripts/test_seo.py      # published site metadata
+python3 scripts/test_improvement_report.py  # Chromium, after make build and Playwright setup
 ```
 
 `make test` drives the compiled bytecode server as a subprocess and exercises

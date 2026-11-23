@@ -10,6 +10,7 @@
   (use "mission_view.howl" as view)
   (use "factory_view.howl" as factory)
   (use "api_response.howl" as api_response)
+  (use "improvement_view.howl" as improvement)
 
   (defun api_url (path)
     (return (str_join (list "http://localhost:8080" path) ""))
@@ -312,6 +313,26 @@
     )
   )
 
+  (defun show_improvement_report ()
+    (type_hint return "void")
+    (let (raw (dom_value (dom_query "#improvement-json"))
+          status (dom_query "#improvement-status") output (dom_query "#improvement-results"))
+      (do
+        (set_text output "")
+        (if (regex_match "^[\\s\\S]{131073}" raw)
+          (set_text status "Report exceeds the 131,072 character limit.")
+          (if (regex_match "^\\s*$" raw)
+            (set_text status "No report loaded.")
+            (try_let (data (parse_json Any raw))
+              (catch err (set_text status "Invalid HowlLoop report."))
+              (try_let (html (call improvement/render_report data))
+                (catch err (set_text status "Invalid HowlLoop report."))
+                (if (= html "")
+                  (set_text status "Invalid HowlLoop report.")
+                  (do
+                    (set_html output html)
+                    (set_text status "Report loaded."))))))))))
+
   (defun refresh_all ()
     (type_hint return "void")
     (do
@@ -387,6 +408,11 @@
   (on_event (dom_query "#pending-preview-btn") "click" (lambda (e) (call preview_pending)))
   (on_event (dom_query "#filter-state") "change" (lambda (e) (call load_missions)))
   (on_event (dom_query "#filter-project") "change" (lambda (e) (call load_missions)))
+  (on_event (dom_query "#improvement-view") "click" (lambda (e) (call show_improvement_report)))
+  (on_event (dom_query "#improvement-form") "reset" (lambda (e)
+    (do
+      (set_text (dom_query "#improvement-results") "")
+      (set_text (dom_query "#improvement-status") "No report loaded."))))
   (on_event (dom_query "#theme-toggle") "click" (lambda (e)
     (toggle_class (dom_query "body") "light-mode")))
 

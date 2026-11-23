@@ -1,5 +1,9 @@
 # Changelog
 
+## View local HowlLoop reports
+
+- Add a browser-only view of HowlLoop report snapshots with outcomes by source, recurring opportunities, lifecycle decisions and timing groups. Chromium checks cover narrow and wide layouts, keyboard input, empty states and rejected payloads.
+
 ## Compile against the published HowlFrame v0.2.0 release
 
 - CI and the README quickstart install the published HowlFrame v0.2.0 binary with `scripts/install_howlframe.sh` instead of cloning HowlFrame and building commit `e77e008f`. The script checks the archive against a SHA-256 pinned in this repository, confirms the binary reports `HowlFrame 0.2.0`, and installs nothing otherwise. v0.2.0 contains `e77e008f`; HowlBoard's sources, tests and grants are unchanged.

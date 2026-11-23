@@ -1,0 +1,163 @@
+(module
+  (defun has ((values list) (value Any)) bool
+    (do
+      (for allowed values
+        (if (= allowed value) (return true)))
+      (return false)))
+
+  (defun valid_source ((value Any)) bool
+    (return (call has (list "observed" "human" "hypothesis" "simulated" "verified") value)))
+
+  (defun valid_result ((value Any)) bool
+    (return (call has (list "ok" "failed" "unavailable" "interrupted" "timeout"
+      "incomplete" "friction" "retry") value)))
+
+  (defun display_timestamp ((value Any)) string
+    (if (regex_match "^\"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]{6})?[+]00:00\"$"
+          (encode_json value))
+      (return (html_escape value))
+      (return "")))
+
+  (defun count_value ((value Any)) int
+    (if (regex_match "^(0|[1-9][0-9]{0,4})$" (encode_json value))
+      (return (to_int value))
+      (return (- 0 1))))
+
+  (defun operation_label ((row dict)) string
+    (let (project (map_get row "project") operation (map_get row "operation"))
+      (do
+        (let (valid false)
+          (do
+            (if (= project "writer")
+              (set valid (call has (list "document" "docx" "pdf" "markdown" "publish"
+                "format" "citations" "fidelity" "voice" "meaning") operation))
+              (do))
+            (if (= project "plane")
+              (set valid (call has (list "factory_task" "attempt" "recovery" "verification" "provider") operation))
+              (do))
+            (if (= project "frame")
+              (set valid (call has (list "compile" "generate" "run" "capability") operation))
+              (do))
+            (if valid
+              (return (str_join (list (html_escape project) " / " (html_escape operation)) ""))
+              (return "")))))))
+
+  (defun counts_html ((counts dict) (total int)) string
+    (let (items "" sum 0)
+      (do
+        (for source (map_keys counts)
+          (do
+            (if (= (call valid_source source) false) (return ""))
+            (let (outcomes (map_get counts source))
+              (for result (map_keys outcomes)
+                (let (n (call count_value (map_get outcomes result)))
+                  (do
+                    (if (or (= (call valid_result result) false) (< n 1)) (return ""))
+                    (set sum (+ sum n))
+                    (set items (str_join (list items "<li>" (html_escape source)
+                      " / " (html_escape result) " &mdash; " (to_string n) "</li>") ""))))))))
+        (if (!= sum total) (return ""))
+        (if (= total 0)
+          (return "<p>No observations in this report.</p>")
+          (return (str_join (list "<h3>Outcomes by source</h3><ul>" items "</ul>") ""))))))
+
+  (defun recent_row ((row dict)) string
+    (let (label (call operation_label row) source (map_get row "source")
+          result (map_get row "result") duration (map_get row "duration_ns")
+          time (call display_timestamp (map_get row "timestamp")))
+      (do
+        (if (or (or (= label "") (= time "")) (or (= (call valid_source source) false) (= (call valid_result result) false)))
+          (return ""))
+        (if (is_nil duration)
+          (return (str_join (list time " &middot; " label " &mdash; " (html_escape source) " / " (html_escape result)
+            " &middot; duration unavailable") ""))
+          (do
+            (if (= (regex_match "^[0-9]{1,16}$" (encode_json duration)) false) (return ""))
+            (return (str_join (list time " &middot; " label " &mdash; " (html_escape source) " / " (html_escape result)
+              " &middot; " (to_string duration) " ns") "")))))))
+
+  (defun opportunity_row ((row dict)) string
+    (let (label (call operation_label row) problem (map_get row "problem")
+          detail (map_get row "detail") runs (call count_value (map_get row "run_count")))
+      (do
+        (if (or (= label "") (or (< runs 2) (> runs 8))) (return ""))
+        (if (or (!= (map_get row "authority") "none")
+                (= (or (= problem "latency") (and (!= problem "ok") (call valid_result problem))) false))
+          (return ""))
+        (let (suffix "")
+          (do
+            (if (= (is_nil detail) false)
+              (do
+                (if (= (call has (list "heading_correction" "format_correction" "citation_correction"
+                    "workflow_difficulty" "output_quality" "dependency" "validation" "blocked" "error") detail) false)
+                  (return ""))
+                (set suffix (str_join (list " / " (html_escape detail)) ""))))
+            (return (str_join (list label " &mdash; " (html_escape problem) suffix
+              " &middot; evidence from " (to_string runs) " runs") "")))))))
+
+  (defun history_row ((row dict)) string
+    (let (label (call opportunity_row (map_get row "candidate")) state (map_get row "state")
+          time (call display_timestamp (map_get row "timestamp")))
+      (do
+        (if (or (or (= label "") (= time "")) (!= (map_get row "authority") "none")) (return ""))
+        (if (= (call has (list "triaged" "proposed" "duplicate" "insufficient" "deferred"
+                   "experimented" "rejected" "accepted_risk" "inconclusive" "verified" "promoted" "regressed") state) false)
+          (return ""))
+        (return (str_join (list time " &middot; " label " &mdash; " (html_escape state)) "")))))
+
+  (defun timing_row ((row dict)) string
+    (let (label (call operation_label row) median (map_get row "median_duration_ns")
+          samples (call count_value (map_get row "samples")) commit (map_get row "commit")
+          environment (map_get row "environment"))
+      (do
+        (if (or (= label "") (< samples 1)) (return ""))
+        (if (= (regex_match "^[0-9]{1,16}([.][0-9]+)?$" (encode_json median)) false) (return ""))
+        (let (revision "revision unknown" host "environment unknown")
+          (do
+            (if (= (is_nil commit) false)
+              (do
+                (if (= (regex_match "^\"[0-9a-f]{40}\"$" (encode_json commit)) false)
+                  (return ""))
+                (set revision (html_escape commit))))
+            (if (= (is_nil environment) false)
+              (do
+                (if (= (call has (list "linux" "macos" "windows") environment) false) (return ""))
+                (set host (html_escape environment))))
+            (return (str_join (list label " &mdash; " (to_string median) " ns median"
+              " &middot; " (to_string samples) " samples &middot; " host " &middot; " revision) "")))))))
+
+  (defun rows_html ((items list) (section string) (limit int)) string
+    (let (size (list_len items) html "")
+      (do
+        (if (> size limit) (return ""))
+        (if (= size 0) (return "<p>None recorded.</p>"))
+        (for item items
+          (let (row "")
+            (do
+              (if (= section "recent") (set row (call recent_row item)) (do))
+              (if (= section "opportunities") (set row (call opportunity_row item)) (do))
+              (if (= section "history") (set row (call history_row item)) (do))
+              (if (= section "timings") (set row (call timing_row item)) (do))
+              (if (= row "") (return ""))
+              (set html (str_join (list html "<li>" row "</li>") "")))))
+        (return (str_join (list "<ul>" html "</ul>") "")))))
+
+  (export
+    (defun render_report ((data dict)) string
+      (let (total (call count_value (map_get data "event_count")))
+        (do
+          (if (or (!= (map_get data "schema") "howl.improvement_report/v1")
+                  (or (< total 0) (> total 10000))) (return ""))
+          (if (> (list_len (map_get data "recent")) total) (return ""))
+          (let (counts (call counts_html (map_get data "result_counts_by_source") total)
+                recent (call rows_html (map_get data "recent") "recent" 20)
+                opportunities (call rows_html (map_get data "opportunities") "opportunities" 20)
+                history (call rows_html (map_get data "history") "history" 20)
+                timings (call rows_html (map_get data "timings") "timings" 100))
+            (do
+              (if (call has (list counts recent opportunities history timings) "") (return ""))
+              (return (str_join (list "<p>Recorded observations: " (to_string total) "</p>" counts
+                "<h3>Recent operations</h3>" recent
+                "<h3>Recurring opportunities</h3>" opportunities
+                "<h3>Advisory lifecycle history</h3>" history
+                "<h3>Successful operation timings</h3>" timings) "")))))))))
