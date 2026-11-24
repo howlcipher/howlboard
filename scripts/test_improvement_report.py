@@ -14,13 +14,17 @@ TIME = "2026-01-01T00:00:00+00:00"
 
 def report():
     return {
-        "schema": SCHEMA, "event_count": 5,
-        "result_counts_by_source": {"observed": {"failed": 2, "ok": 2}, "simulated": {"ok": 1}},
+        "schema": SCHEMA, "event_count": 6,
+        "result_counts_by_source": {
+            "observed": {"failed": 2, "ok": 2}, "simulated": {"ok": 1}, "human": {"friction": 1},
+        },
         "recent": [
             {"project": "plane", "operation": "verification", "source": "observed",
-             "result": "failed", "timestamp": TIME, "duration_ns": 19000000},
+             "result": "failed", "detail": "blocked", "timestamp": TIME, "duration_ns": 19000000},
             {"project": "writer", "operation": "pdf", "source": "simulated",
-             "result": "ok", "timestamp": TIME, "duration_ns": None},
+             "result": "ok", "detail": None, "timestamp": TIME, "duration_ns": None},
+            {"project": "writer", "operation": "document", "source": "human",
+             "result": "friction", "detail": "heading_correction", "timestamp": TIME},
         ],
         "opportunities": [
             {"project": "plane", "operation": "verification", "problem": "failed",
@@ -91,7 +95,11 @@ def test_view(browser, width, snapshots):
                  "linux", "macos", "evidence from 2 runs", "failed / error", TIME):
         assert text in view.inner_text()
     assert "Report loaded" in status.inner_text()
-    assert view.get_by_role("heading", name="Recent operations").is_visible()
+    recent = view.locator('h3:has-text("Recent operations") + ul')
+    assert recent.is_visible()
+    assert "observed / failed / blocked" in recent.inner_text()
+    assert "human / friction / heading_correction" in recent.inner_text()
+    assert "simulated / ok · duration unavailable" in recent.inner_text()
     assert view.get_by_role("heading", name="Recurring opportunities").is_visible()
     assert view.evaluate("el => el.scrollWidth <= el.clientWidth + 1")
     assert not requests, requests
@@ -107,14 +115,19 @@ def test_view(browser, width, snapshots):
     for raw in snapshots:
         field.fill(raw)
         render.click()
-        assert f"Recorded observations: {json.loads(raw)['event_count']}" in view.inner_text()
+        snapshot = json.loads(raw)
+        assert f"Recorded observations: {snapshot['event_count']}" in view.inner_text()
+        for event in snapshot["recent"]:
+            if event.get("detail"):
+                assert f"{event['source']} / {event['result']} / {event['detail']}" in recent.inner_text()
         assert not requests, requests
 
     invalid = [
-        "{", json.dumps({"schema": SCHEMA}), json.dumps(report() | {"event_count": "5"}),
+        "{", json.dumps({"schema": SCHEMA}), json.dumps(report() | {"event_count": "6"}),
         json.dumps(report() | {"recent": "not a list"}),
         json.dumps(report() | {"event_count": 1}),
         json.dumps(report() | {"recent": [report()["recent"][0] | {"project": "<img src=x>"}]}),
+        json.dumps(report() | {"recent": [report()["recent"][0] | {"detail": "<img src=x>"}]}),
         json.dumps(report() | {"history": [report()["history"][0] | {"authority": "approve"}]}),
         json.dumps(report() | {"opportunities": [report()["opportunities"][0] | {"problem": "ok"}]}),
     ]

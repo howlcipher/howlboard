@@ -1,5 +1,9 @@
 # Changelog
 
+## Recent HowlLoop operation details
+
+- Show recorded failure and friction categories on recent operation rows, including one-off observations.
+
 ## View local HowlLoop reports
 
 - Add a browser-only view of HowlLoop report snapshots with outcomes by source, recurring opportunities, lifecycle decisions and timing groups. Chromium checks cover narrow and wide layouts, keyboard input, empty states and rejected payloads.
