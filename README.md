@@ -112,9 +112,10 @@ howlloop report --store /path/to/events.sqlite
 ```
 
 Paste the JSON into **HowlLoop improvements** on the locally served Board and
-choose **View report**. The view shows outcomes by source, recent operations
-and missing timings, recurring opportunities, lifecycle decisions, and median
-elapsed times with sample counts grouped by environment and source revision.
+choose **View report**. Recent operations include recorded failure or feedback
+categories and indicate when timings are missing. The view also shows outcomes
+by source, recurring opportunities, lifecycle decisions, and median elapsed
+times with sample counts grouped by environment and source revision.
 Opportunity counts describe the runs included as evidence. Use **Clear report**
 to remove the pasted input and results from the tab.
 

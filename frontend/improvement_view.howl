@@ -12,6 +12,14 @@
     (return (call has (list "ok" "failed" "unavailable" "interrupted" "timeout"
       "incomplete" "friction" "retry") value)))
 
+  (defun outcome_label ((result string) (detail Any)) string
+    (do
+      (if (is_nil detail) (return (html_escape result)))
+      (if (= (call has (list "heading_correction" "format_correction" "citation_correction"
+            "workflow_difficulty" "output_quality" "dependency" "validation" "blocked" "error") detail) false)
+        (return ""))
+      (return (str_join (list (html_escape result) " / " (html_escape detail)) ""))))
+
   (defun display_timestamp ((value Any)) string
     (if (regex_match "^\"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]{6})?[+]00:00\"$"
           (encode_json value))
@@ -68,13 +76,16 @@
       (do
         (if (or (or (= label "") (= time "")) (or (= (call valid_source source) false) (= (call valid_result result) false)))
           (return ""))
-        (if (is_nil duration)
-          (return (str_join (list time " &middot; " label " &mdash; " (html_escape source) " / " (html_escape result)
-            " &middot; duration unavailable") ""))
+        (let (outcome (call outcome_label result (map_get row "detail"))
+              elapsed "duration unavailable")
           (do
-            (if (= (regex_match "^[0-9]{1,16}$" (encode_json duration)) false) (return ""))
-            (return (str_join (list time " &middot; " label " &mdash; " (html_escape source) " / " (html_escape result)
-              " &middot; " (to_string duration) " ns") "")))))))
+            (if (= outcome "") (return ""))
+            (if (= (is_nil duration) false)
+              (do
+                (if (= (regex_match "^[0-9]{1,16}$" (encode_json duration)) false) (return ""))
+                (set elapsed (str_join (list (to_string duration) " ns") ""))))
+            (return (str_join (list time " &middot; " label " &mdash; " (html_escape source)
+              " / " outcome " &middot; " elapsed) "")))))))
 
   (defun opportunity_row ((row dict)) string
     (let (label (call operation_label row) problem (map_get row "problem")
@@ -84,15 +95,10 @@
         (if (or (!= (map_get row "authority") "none")
                 (= (or (= problem "latency") (and (!= problem "ok") (call valid_result problem))) false))
           (return ""))
-        (let (suffix "")
+        (let (outcome (call outcome_label problem detail))
           (do
-            (if (= (is_nil detail) false)
-              (do
-                (if (= (call has (list "heading_correction" "format_correction" "citation_correction"
-                    "workflow_difficulty" "output_quality" "dependency" "validation" "blocked" "error") detail) false)
-                  (return ""))
-                (set suffix (str_join (list " / " (html_escape detail)) ""))))
-            (return (str_join (list label " &mdash; " (html_escape problem) suffix
+            (if (= outcome "") (return ""))
+            (return (str_join (list label " &mdash; " outcome
               " &middot; evidence from " (to_string runs) " runs") "")))))))
 
   (defun history_row ((row dict)) string
